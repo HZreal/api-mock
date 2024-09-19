@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Socket.IO 客户端测试页面</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+<h1>Socket.IO Test</h1>
+<script>
+    const socket = io("ws://127.0.0.1:40020");
+
+    socket.on("connect", () => {
+        console.log("connected to server");
+        socket.emit("message", "Hello from client!");
+    });
+
+    socket.on("reply", (msg) => {
+        console.log("Server replied:", msg);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("disconnected from server");
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+gin:
+  host: 127.0.0.1
+  port: 9005
+  mode: debug
+
+mysql:
+  host: 127.0.0.1
+  port: 3306
+  dbname: open_api_platform
+  # 数据库登录用户
+  username: huang
+  # 数据库密码
+  password: root123456
+  # 数据库名字
+  timeout: 10s
+  maxConn: 200
+  maxOpen: 200
+
+redis:
+  host: 127.0.0.1
+  port: 56378
+  password:
+  DB: 15
+
+grpc:
+  host: 127.0.0.1
+  port: 50051

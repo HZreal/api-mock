@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+//option go_package = "google.golang.org/grpc/examples/route_guide/routeguide";
+option go_package = "api-mock/core/rpc/proto;calculator";
+
+
+package calculator;
+
+// 定义服务
+service Calculator {
+  rpc Add (AddRequest) returns (AddResponse);
+  rpc Subtract (SubtractRequest) returns (SubtractResponse);
+}
+
+// 请求和响应消息
+message AddRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message AddResponse {
+  int32 result = 1;
+}
+
+message SubtractRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+message SubtractResponse {
+  int32 result = 1;
+}
+
+// 服务端流式
+service ClientUnaryServerStream {
+  // 质因数分解，将分解的每一个质因数通过流式传输的方式逐一返回给客户端
+  rpc PrimeFactors (PrimeFactorsRequest) returns (stream PrimeFactorsResponse);
+}
+
+message PrimeFactorsRequest {
+  int32 number = 1;
+}
+
+message PrimeFactorsResponse {
+  int32 factor = 1;
+}
+
+// 客户端流式
+service ClientStreamServerUnary {
+  // 客户端以流的形式连续发送多个整数，服务端接收所有整数后，计算它们的平均值，并将这个平均值作为单一响应返回给客户端。
+  rpc Average (stream AverageRequest) returns (AverageResponse);
+}
+
+message AverageRequest {
+  int32 number = 1;
+}
+
+message AverageResponse {
+  float average = 1;
+}
+
+// 双向流式
+service ClientStreamServerStream {
+  // 双方可以在通信过程中随时发送和接收消息，类似于实时聊天的场景。
+  rpc Chat (stream ChatMessage) returns (stream ChatMessage);
+}
+
+message ChatMessage {
+  string message = 1;
+}
