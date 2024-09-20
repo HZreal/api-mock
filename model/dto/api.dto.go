@@ -1,10 +1,12 @@
 package dto
 
+import "gin-init/model/entity"
+
 type ApiCreateDTO struct {
-	Name   string                 `json:"name" binding:"required,min=1,max=20"`
-	Url    string                 `json:"url" binding:"required,max=64"`
-	Method string                 `json:"method" binding:"required"`
-	Header map[string]interface{} `json:"header" binding:"required"`
+	Name   string               `json:"name" binding:"omitempty,min=1,max=20"`
+	Url    string               `json:"url" binding:"required,max=64"`
+	Method string               `json:"method" binding:"required"`
+	Params []entity.ParamStruct `json:"header" binding:"required"`
 }
 
 // TODO

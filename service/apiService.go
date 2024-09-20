@@ -1,6 +1,8 @@
 package service
 
 import (
+	"encoding/json"
+	"fmt"
 	"gin-init/model/dto"
 	"gin-init/model/entity"
 	"gin-init/model/vo"
@@ -19,9 +21,9 @@ func NewApiService(apiModel *entity.ApiModel) *ApiService {
 func (uS *ApiService) Create(c *gin.Context, body dto.ApiCreateDTO) vo.ApiDetailInfo {
 	api := entity.ApiModel{
 		Name:   body.Name,
-		Url:    body.Url,
+		Uri:    body.Url,
 		Method: body.Method,
-		Header: body.Header,
+		Params: body.Params,
 	}
 
 	if result := db.Create(&api); result.Error != nil {
@@ -32,8 +34,72 @@ func (uS *ApiService) Create(c *gin.Context, body dto.ApiCreateDTO) vo.ApiDetail
 		Id:     api.Id,
 		Name:   api.Name,
 		Method: api.Method,
-		Header: api.Header,
+		Params: api.Params,
 	}
+}
+
+func (uS *ApiService) Import() {
+	logEntries, err := readAndParseLogFile()
+	if err != nil {
+		return
+	}
+
+	for i, line := range logEntries {
+		fmt.Println("i  ---->  ", i)
+		//
+		if line.ContentType == "-" {
+			line.ContentType = ""
+		}
+
+		//
+		if line.Args == "-" {
+			line.Args = ""
+		}
+
+		//
+		var body map[string]interface{}
+		var params []entity.ParamStruct
+		err2 := json.Unmarshal([]byte(line.RequestBody), &body)
+		if err2 != nil {
+			// line.RequestBody == "-"
+			fmt.Println("line.RequestBody Unmarshal 失败, params 为空", err2)
+			params = []entity.ParamStruct{}
+		} else {
+			for k, v := range body {
+				var itemType string
+				switch v.(type) {
+				case string:
+					itemType = "string"
+				case int:
+					itemType = "int"
+				case float32:
+					itemType = "float32"
+				case float64:
+					itemType = "float64"
+				case bool:
+					itemType = "bool"
+				}
+				item := entity.ParamStruct{Name: k, Type: itemType}
+				params = append(params, item)
+			}
+		}
+
+		r := entity.ApiModel{
+			Name:        "xxx",
+			Method:      line.Method,
+			UriArgs:     line.UriArgs,
+			Uri:         line.Uri,
+			ContentType: line.ContentType,
+			Args:        line.Args,
+			Params:      params,
+		}
+		if result := db.Create(&r); result.Error != nil {
+			log.Printf("Failed to create api, error: %v", result.Error)
+			continue
+		}
+
+	}
+
 }
 
 // /////////////////////////////////////////// 以下接口待调整 //////////////////////////////////////////////////

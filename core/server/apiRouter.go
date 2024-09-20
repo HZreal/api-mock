@@ -9,7 +9,8 @@ func addApiRouter() {
 
 	userGroup := apiGroup.Group("api")
 	{
-		userGroup.POST("info/create", appController.ApiController.CreateApi)
+		userGroup.POST("info/create", appController.ApiController.Create)
+		userGroup.POST("action/import", appController.ApiController.Import)
 		// userGroup.POST("info/all", appController.ApiController.GetAllUser)
 		// userGroup.GET("info/detail", appController.ApiController.GetUserDetail)
 		// userGroup.POST("info/list", appController.ApiController.GetUserList)

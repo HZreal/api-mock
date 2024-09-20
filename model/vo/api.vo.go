@@ -1,5 +1,7 @@
 package vo
 
+import "gin-init/model/entity"
+
 /**
  * @Author elastic·H
  * @Date 2024-08-08
@@ -8,9 +10,9 @@ package vo
  */
 
 type ApiDetailInfo struct {
-	Id     int                    `json:"id" gorm:"column:id;primary_key;AUTO_INCREMENT;NOT NULL"`
-	Name   string                 `json:"name" gorm:"column:username"`
-	Url    string                 `json:"url" gorm:"column:phone"`
-	Method string                 `json:"method" gorm:"column:age"`
-	Header map[string]interface{} `json:"header" gorm:"column:extra;serializer:json"`
+	Id     int                  `json:"id" gorm:"column:id;primary_key;AUTO_INCREMENT;NOT NULL"`
+	Name   string               `json:"name" gorm:"column:name"`
+	Url    string               `json:"url" gorm:"column:url"`
+	Method string               `json:"method" gorm:"column:method"`
+	Params []entity.ParamStruct `json:"params" gorm:"column:params;serializer:json"`
 }

@@ -1,11 +1,21 @@
 package entity
 
+type ParamStruct struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Mock    string `json:"mock"`
+	Example string `json:"example"`
+}
+
 type ApiModel struct {
-	Id     int                    `gorm:"column:id;primary_key;AUTO_INCREMENT;NOT NULL"`
-	Name   string                 `gorm:"column:name"`
-	Url    string                 `gorm:"column:url"`
-	Method string                 `gorm:"column:method"`
-	Header map[string]interface{} `gorm:"column:header;serializer:json"`
+	Id          int           `gorm:"column:id;primary_key;AUTO_INCREMENT;NOT NULL"`
+	Name        string        `gorm:"column:name"`
+	Method      string        `gorm:"column:method"`
+	UriArgs     string        `gorm:"column:uri_args"`
+	Uri         string        `gorm:"column:uri"`
+	ContentType string        `gorm:"column:content_type"`
+	Args        string        `gorm:"column:args"`
+	Params      []ParamStruct `gorm:"column:params;serializer:json"`
 }
 
 func NewApiModel() *ApiModel {

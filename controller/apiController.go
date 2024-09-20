@@ -16,7 +16,7 @@ func NewApiController(apiService *service.ApiService) *ApiController {
 	return &ApiController{ApiService: apiService}
 }
 
-func (uC *ApiController) CreateApi(c *gin.Context) {
+func (uC *ApiController) Create(c *gin.Context) {
 	var body dto.ApiCreateDTO
 
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -28,6 +28,11 @@ func (uC *ApiController) CreateApi(c *gin.Context) {
 	data := uC.ApiService.Create(c, body)
 
 	response.SuccessWithData(c, data)
+}
+
+func (uC *ApiController) Import(c *gin.Context) {
+	uC.ApiService.Import()
+	response.SuccessWithoutData(c)
 }
 
 // func (uC *ApiController) GetAll(c *gin.Context) {

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
@@ -23,7 +22,6 @@ var Logger *zap.Logger
 // }
 
 func init() {
-	fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
 	logFile, err := os.OpenFile("logs/gin_app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		panic(err)
