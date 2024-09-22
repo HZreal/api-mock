@@ -8,7 +8,7 @@ create table tb_api
     method       varchar(8)   null,
     params       json         null,
     content_type varchar(64)  null,
-    uri_args     varchar(64)  null
+    uri_args     varchar(128)  null
 )
     comment '接口表';
 
