@@ -8,6 +8,7 @@ import (
 	"gin-init/model/vo"
 	"github.com/gin-gonic/gin"
 	"log"
+	"strings"
 )
 
 type ApiService struct {
@@ -60,27 +61,37 @@ func (uS *ApiService) Import() {
 		var params []entity.ParamStruct
 		err2 := json.Unmarshal([]byte(line.RequestBody), &body)
 		if err2 != nil {
-			// line.RequestBody == "-"
 			fmt.Println("line.RequestBody Unmarshal 失败, params 为空", err2)
-			params = []entity.ParamStruct{}
-		} else {
-			for k, v := range body {
-				var itemType string
-				switch v.(type) {
-				case string:
-					itemType = "string"
-				case int:
-					itemType = "int"
-				case float32:
-					itemType = "float32"
-				case float64:
-					itemType = "float64"
-				case bool:
-					itemType = "bool"
-				}
-				item := entity.ParamStruct{Name: k, Type: itemType}
-				params = append(params, item)
+			if line.RequestBody == "-" {
+				fmt.Println("-  ---->  ")
+				params = []entity.ParamStruct{}
+			} else if strings.HasPrefix(line.RequestBody, "p=") {
+				fmt.Println("p=  ---->  ")
+				body = ParseBodyP(line.RequestBody)
+			} else if strings.Contains(line.RequestBody, "=") {
+				fmt.Println("=&  ---->  ")
+				body, _ = ParseURLFormEncoded(line.RequestBody)
 			}
+		} else {
+			//
+			fmt.Println("err2,  Unmarshal成功 ---->  ", err2)
+		}
+		for k, v := range body {
+			var itemType string
+			switch v.(type) {
+			case string:
+				itemType = "string"
+			case int:
+				itemType = "int"
+			case float32:
+				itemType = "float32"
+			case float64:
+				itemType = "float64"
+			case bool:
+				itemType = "bool"
+			}
+			item := entity.ParamStruct{Name: k, Type: itemType}
+			params = append(params, item)
 		}
 
 		r := entity.ApiModel{

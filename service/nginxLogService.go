@@ -32,7 +32,7 @@ type logLine struct {
 }
 
 // bodyP := "p=%7B%22pagination%22%3A%7B%22current%22%3A1%2C%22pageSize%22%3A10%7D%2C%22sorter%22%3A%7B%7D%2C%22filter%22%3A%7B%7D%7D"
-func ParseBodyP(bodyP string) {
+func ParseBodyP(bodyP string) map[string]interface{} {
 
 	// 第一步：解析 URL-编码的表单数据
 	values, err := url.ParseQuery(bodyP)
@@ -64,16 +64,17 @@ func ParseBodyP(bodyP string) {
 
 	// 输出解析结果
 	fmt.Printf("解析后的 JSON 对象: %+v\n", parsedData)
+	return parsedData
 }
 
 // sourceType=1&riskTypeStatus=-1
-func ParseURLFormEncoded(encoded string) (map[string]string, error) {
+func ParseURLFormEncoded(encoded string) (map[string]interface{}, error) {
 	values, err := url.ParseQuery(encoded)
 	if err != nil {
 		return nil, fmt.Errorf("解析 URL 查询参数失败: %v", err)
 	}
 
-	result := make(map[string]string)
+	result := make(map[string]interface{})
 	for key, vals := range values {
 		if len(vals) > 0 {
 			result[key] = vals[0]
@@ -118,14 +119,14 @@ func readAndParseLogFile() ([]logLine, error) {
 		}
 
 		// 将 line 转换为字符串
-		strLine := string(line)
+		// strLine := string(line)
 
 		// 全局替换非法转义字符，确保 JSON 可以解析
-		strLine = unescapeRequestBody(strLine)
+		// strLine = unescapeRequestBody(strLine)
 
 		//
 		var entry logLine
-		if err3 := json.Unmarshal([]byte(strLine), &entry); err3 != nil {
+		if err3 := json.Unmarshal(line, &entry); err3 != nil {
 			fmt.Printf("Unmarshal 失败: %s, 错误: %v\n", line, err3)
 			continue
 		}
