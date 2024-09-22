@@ -23,7 +23,6 @@ func (uS *ApiService) Create(c *gin.Context, body dto.ApiCreateDTO) vo.ApiDetail
 		Name:   body.Name,
 		Uri:    body.Url,
 		Method: body.Method,
-		Params: body.Params,
 	}
 
 	if result := db.Create(&api); result.Error != nil {
