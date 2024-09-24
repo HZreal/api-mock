@@ -46,36 +46,33 @@ func (uS *ApiService) Import() {
 
 	for i, line := range logEntries {
 		fmt.Println("i  ---->  ", i)
-		//
-		if line.ContentType == "-" {
-			line.ContentType = ""
-		}
-
-		//
-		if line.Args == "-" {
-			line.Args = ""
-		}
 
 		//
 		var body map[string]interface{}
 		var params []entity.ParamStruct
-		err2 := json.Unmarshal([]byte(line.RequestBody), &body)
-		if err2 != nil {
-			fmt.Println("line.RequestBody Unmarshal 失败, params 为空", err2)
-			if line.RequestBody == "-" {
-				fmt.Println("-  ---->  ")
-				params = []entity.ParamStruct{}
-			} else if strings.HasPrefix(line.RequestBody, "p=") {
-				fmt.Println("p=  ---->  ")
-				body = ParseBodyP(line.RequestBody)
-			} else if strings.Contains(line.RequestBody, "=") {
-				fmt.Println("=&  ---->  ")
-				body, _ = ParseURLFormEncoded(line.RequestBody)
-			}
-		} else {
+
+		lineBody := line.RequestBody
+		if lineBody == "" {
 			//
-			fmt.Println("err2,  Unmarshal成功 ---->  ", err2)
+			params = []entity.ParamStruct{}
+		} else if strings.HasPrefix(lineBody, "p=") {
+			//
+			body = ParseBodyP(lineBody)
+		} else if strings.Contains(lineBody, "=") {
+			//
+			body, _ = ParseURLFormEncoded(lineBody)
+		} else {
+			err2 := json.Unmarshal([]byte(lineBody), &body)
+			if err2 != nil {
+				fmt.Println("lineBody Unmarshal 失败, params 为空", err2)
+				params = []entity.ParamStruct{}
+			} else {
+				//
+				fmt.Println("lineBody Unmarshal成功 ---->  ", body)
+			}
 		}
+
+		// TODO 处理 body 成参数
 		for k, v := range body {
 			var itemType string
 			switch v.(type) {
@@ -94,10 +91,11 @@ func (uS *ApiService) Import() {
 			params = append(params, item)
 		}
 
+		//
 		r := entity.ApiModel{
 			Name:        "xxx",
 			Method:      line.Method,
-			UriArgs:     line.UriArgs,
+			UriArgs:     line.ReqUriArgs,
 			Uri:         line.Uri,
 			ContentType: line.ContentType,
 			Args:        line.Args,

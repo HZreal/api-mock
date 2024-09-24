@@ -31,7 +31,9 @@ func (uC *ApiController) Create(c *gin.Context) {
 }
 
 func (uC *ApiController) Import(c *gin.Context) {
+	//
 	uC.ApiService.Import()
+
 	response.SuccessWithoutData(c)
 }
 

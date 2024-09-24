@@ -15,13 +15,15 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"regexp"
+	"strconv"
 	"strings"
 )
 
 type logLine struct {
 	TimeLocal       string `json:"time_local"`
 	Method          string `json:"request_method"`
-	UriArgs         string `json:"request_uri"`
+	ReqUriArgs      string `json:"request_uri"`
 	Uri             string `json:"uri"`
 	ContentType     string `json:"content_type"`
 	Args            string `json:"args"`
@@ -31,6 +33,22 @@ type logLine struct {
 	SentContentType string `json:"sent_content_type"`
 }
 
+type record struct {
+	Method      string
+	ReqUriArgs  string
+	Uri         string
+	ContentType string
+	Args        string
+	RequestBody string
+}
+
+// TODO 部分过滤的黑名单
+var (
+	prefixBlackList = []string{""}
+	suffixBlackList = []string{""}
+)
+
+// ParseBodyP
 // bodyP := "p=%7B%22pagination%22%3A%7B%22current%22%3A1%2C%22pageSize%22%3A10%7D%2C%22sorter%22%3A%7B%7D%2C%22filter%22%3A%7B%7D%7D"
 func ParseBodyP(bodyP string) map[string]interface{} {
 
@@ -67,6 +85,7 @@ func ParseBodyP(bodyP string) map[string]interface{} {
 	return parsedData
 }
 
+// ParseURLFormEncoded
 // sourceType=1&riskTypeStatus=-1
 func ParseURLFormEncoded(encoded string) (map[string]interface{}, error) {
 	values, err := url.ParseQuery(encoded)
@@ -85,7 +104,7 @@ func ParseURLFormEncoded(encoded string) (map[string]interface{}, error) {
 }
 
 func getFilePath() string {
-	return "/Users/huang/work/xuntong/api-mock/public/access.log"
+	return "D:/overall/project/api-mock/public/access.log"
 }
 
 func unescapeRequestBody(input string) string {
@@ -95,10 +114,26 @@ func unescapeRequestBody(input string) string {
 	return input
 }
 
-func readAndParseLogFile() ([]logLine, error) {
+// unescapeHex
+// 处理转义
+func unescapeHex(s string) (string, error) {
+	re := regexp.MustCompile(`\\x([0-9A-Fa-f]{2})`)
+	fixed := re.ReplaceAllStringFunc(s, func(match string) string {
+		hex := match[2:]
+		b, err := strconv.ParseUint(hex, 16, 8)
+		if err != nil {
+			return match // 保留原始
+		}
+		return string(b)
+	})
+	return fixed, nil
+}
+
+func readAndParseLogFile() ([]record, error) {
+	//
 	filePath := getFilePath()
 
-	var logEntries []logLine
+	var recordArr []record
 
 	//
 	openFile, err := os.Open(filePath)
@@ -118,20 +153,52 @@ func readAndParseLogFile() ([]logLine, error) {
 			continue
 		}
 
-		// 将 line 转换为字符串
-		// strLine := string(line)
+		strLine := string(line)
 
 		// 全局替换非法转义字符，确保 JSON 可以解析
-		// strLine = unescapeRequestBody(strLine)
+		fixedLine, errr := unescapeHex(strLine)
+		if errr != nil {
+			log.Printf("修复转义序列失败: %v\n内容: %s", errr, strLine)
+			panic(errr)
+		}
 
 		//
 		var entry logLine
-		if err3 := json.Unmarshal(line, &entry); err3 != nil {
-			fmt.Printf("Unmarshal 失败: %s, 错误: %v\n", line, err3)
+		if err3 := json.Unmarshal([]byte(fixedLine), &entry); err3 != nil {
+			fmt.Printf("日志行 Unmarshal 失败: %s, 错误: %v\n", line, err3)
 			continue
 		}
 
-		logEntries = append(logEntries, entry)
+		// 过滤掉静态资源请求, 后续可配置名单
+		if strings.HasSuffix(entry.Uri, ".js") ||
+			strings.HasSuffix(entry.Uri, ".png") ||
+			strings.HasPrefix(entry.Uri, "/skin") {
+			continue
+		}
+
+		// TODO 重复问题，更新
+
+		// 处理空值
+		if entry.ContentType == "-" {
+			entry.ContentType = ""
+		}
+		if entry.Args == "-" {
+			entry.Args = ""
+		}
+		if entry.RequestBody == "-" {
+			entry.RequestBody = ""
+		}
+
+		//
+		recordItem := record{
+			Method:      entry.Method,
+			ReqUriArgs:  entry.ReqUriArgs,
+			Uri:         entry.Uri,
+			ContentType: entry.ContentType,
+			Args:        entry.Args,
+			RequestBody: entry.RequestBody,
+		}
+		recordArr = append(recordArr, recordItem)
 	}
-	return logEntries, nil
+	return recordArr, nil
 }
