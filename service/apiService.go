@@ -1,14 +1,12 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"gin-init/model/dto"
 	"gin-init/model/entity"
 	"gin-init/model/vo"
 	"github.com/gin-gonic/gin"
 	"log"
-	"strings"
 )
 
 type ApiService struct {
@@ -48,50 +46,9 @@ func (uS *ApiService) Import() {
 		fmt.Println("i  ---->  ", i)
 
 		//
-		var body map[string]interface{}
-		var params []entity.ParamStruct
+		params := parseBody(line.RequestBody)
 
-		lineBody := line.RequestBody
-		if lineBody == "" {
-			//
-			params = []entity.ParamStruct{}
-		} else if strings.HasPrefix(lineBody, "p=") {
-			//
-			body = ParseBodyP(lineBody)
-		} else if strings.Contains(lineBody, "=") {
-			//
-			body, _ = ParseURLFormEncoded(lineBody)
-		} else {
-			err2 := json.Unmarshal([]byte(lineBody), &body)
-			if err2 != nil {
-				fmt.Println("lineBody Unmarshal 失败, params 为空", err2)
-				params = []entity.ParamStruct{}
-			} else {
-				//
-				fmt.Println("lineBody Unmarshal成功 ---->  ", body)
-			}
-		}
-
-		// TODO 处理 body 成参数
-		for k, v := range body {
-			var itemType string
-			switch v.(type) {
-			case string:
-				itemType = "string"
-			case int:
-				itemType = "int"
-			case float32:
-				itemType = "float32"
-			case float64:
-				itemType = "float64"
-			case bool:
-				itemType = "bool"
-			}
-			item := entity.ParamStruct{Name: k, Type: itemType}
-			params = append(params, item)
-		}
-
-		//
+		// 逐一入库，后续会更新
 		r := entity.ApiModel{
 			Name:        "xxx",
 			Method:      line.Method,

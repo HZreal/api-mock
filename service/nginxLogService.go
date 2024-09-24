@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"gin-init/model/entity"
 	"io"
 	"log"
 	"net/url"
@@ -201,4 +202,54 @@ func readAndParseLogFile() ([]record, error) {
 		recordArr = append(recordArr, recordItem)
 	}
 	return recordArr, nil
+}
+
+// 处理 body
+func parseBody(lineBody string) (params []entity.ParamStruct) {
+	var body map[string]interface{}
+
+	if lineBody == "" {
+		//
+		params = []entity.ParamStruct{}
+	} else if strings.HasPrefix(lineBody, "p=") {
+		//
+		body = ParseBodyP(lineBody)
+	} else if strings.Contains(lineBody, "=") {
+		//
+		body, _ = ParseURLFormEncoded(lineBody)
+	} else {
+		err2 := json.Unmarshal([]byte(lineBody), &body)
+		if err2 != nil {
+			fmt.Println("lineBody Unmarshal 失败, params 为空", err2)
+			params = []entity.ParamStruct{}
+		} else {
+			//
+			fmt.Println("lineBody Unmarshal成功 body  ---->  ", body)
+		}
+	}
+
+	// TODO 处理 body 成参数
+	for k, v := range body {
+		var itemType string
+		switch v.(type) {
+		case string:
+			itemType = "string"
+		case int:
+			itemType = "int"
+		case float32:
+			itemType = "float32"
+		case float64:
+			itemType = "float64"
+		case bool:
+			itemType = "bool"
+		case map[string]interface{}:
+			itemType = "object"
+		default:
+			itemType = "unknown"
+		}
+		item := entity.ParamStruct{Name: k, Type: itemType}
+		params = append(params, item)
+	}
+
+	return
 }
