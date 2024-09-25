@@ -55,6 +55,7 @@ func registerRoutes() {
 	addDemoRouter()
 	addUserRouter()
 	addApiRouter()
+	addTaskRouter()
 }
 
 func StartGinServer() {

@@ -29,11 +29,15 @@ func InitializeApp() (*AppControllers, error) {
 	apiModel := entity.NewApiModel()
 	apiService := service.NewApiService(apiModel)
 	apiController := controller.NewApiController(apiService)
+	taskModel := entity.NewTaskModel()
+	taskService := service.NewTaskService(taskModel)
+	taskController := controller.NewTaskController(taskService)
 	appControllers := &AppControllers{
 		DemoController: demoController,
 		SysController:  sysController,
 		UserController: userController,
 		ApiController:  apiController,
+		TaskController: taskController,
 	}
 	return appControllers, nil
 }
@@ -48,12 +52,15 @@ var UserSet = wire.NewSet(controller.NewUserController, service.NewUserService, 
 
 var ApiSet = wire.NewSet(controller.NewApiController, service.NewApiService, entity.NewApiModel)
 
+var TaskSet = wire.NewSet(controller.NewTaskController, service.NewTaskService, entity.NewTaskModel)
+
 // AppSet 包含了所有模型的 ProviderSet
 var AppSet = wire.NewSet(
 	DemoSet,
 	SysSet,
 	UserSet,
 	ApiSet,
+	TaskSet,
 )
 
 type AppControllers struct {
@@ -61,4 +68,5 @@ type AppControllers struct {
 	SysController  *controller.SysController
 	UserController *controller.UserController
 	ApiController  *controller.ApiController
+	TaskController *controller.TaskController
 }
