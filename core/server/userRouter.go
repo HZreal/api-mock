@@ -10,7 +10,7 @@ func addUserRouter() {
 	// userController := controller.UserController{}
 	appController, _ := wire.InitializeApp()
 
-	userGroup := apiGroup.Group("user")
+	userGroup := routerGroup.Group("user")
 	{
 		userGroup.POST("info/all", appController.UserController.GetAllUser)
 		// userGroup.GET("info/detail", userController.GetUserDetail)

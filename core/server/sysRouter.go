@@ -8,7 +8,7 @@ func addSysRouter() {
 	// sysController := controller.SysController{}
 	appController, _ := wire.InitializeApp()
 
-	sysGroup := apiGroup.Group("sys")
+	sysGroup := routerGroup.Group("sys")
 	{
 		// sysGroup.POST("login", sysController.Login)
 		sysGroup.POST("login", appController.SysController.Login)

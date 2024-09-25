@@ -11,7 +11,7 @@ import (
 
 var r *gin.Engine
 
-var apiGroup *gin.RouterGroup
+var routerGroup *gin.RouterGroup
 
 func init() {
 	//
@@ -45,7 +45,7 @@ func init() {
 	r.Static("/public", "./public")
 
 	// routers definition
-	apiGroup = r.Group("api")
+	routerGroup = r.Group("api")
 	//
 	registerRoutes()
 }
