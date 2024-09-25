@@ -8,7 +8,7 @@ type ParamStruct struct {
 }
 
 type ApiModel struct {
-	Id          int           `gorm:"column:id;primary_key;AUTO_INCREMENT;NOT NULL"`
+	Id          uint          `gorm:"column:id;primary_key;AUTO_INCREMENT;NOT NULL"`
 	Name        string        `gorm:"column:name"`
 	Method      string        `gorm:"column:method"`
 	UriArgs     string        `gorm:"column:uri_args"`

@@ -17,7 +17,7 @@ func NewApiService(apiModel *entity.ApiModel) *ApiService {
 	return &ApiService{ApiModel: apiModel}
 }
 
-func (uS *ApiService) Create(c *gin.Context, body dto.ApiCreateDTO) vo.ApiDetailInfo {
+func (sv *ApiService) Create(c *gin.Context, body dto.ApiCreateDTO) vo.ApiDetailInfo {
 	api := entity.ApiModel{
 		Name:   body.Name,
 		Uri:    body.Url,
@@ -36,7 +36,7 @@ func (uS *ApiService) Create(c *gin.Context, body dto.ApiCreateDTO) vo.ApiDetail
 	}
 }
 
-func (uS *ApiService) Import() {
+func (sv *ApiService) Import() {
 	logEntries, err := readAndParseLogFile()
 	if err != nil {
 		return
@@ -46,7 +46,6 @@ func (uS *ApiService) Import() {
 		fmt.Println("i  ---->  ", i)
 
 		//
-		params := parseBody(line.RequestBody)
 
 		// 逐一入库，后续会更新
 		r := entity.ApiModel{
@@ -56,7 +55,7 @@ func (uS *ApiService) Import() {
 			Uri:         line.Uri,
 			ContentType: line.ContentType,
 			Args:        line.Args,
-			Params:      params,
+			Params:      line.RequestBodyParams,
 		}
 		if result := db.Create(&r); result.Error != nil {
 			log.Printf("Failed to create api, error: %v", result.Error)
@@ -69,47 +68,47 @@ func (uS *ApiService) Import() {
 
 // /////////////////////////////////////////// 以下接口待调整 //////////////////////////////////////////////////
 
-// func (uS *ApiService) GetAll(c *gin.Context, body dto.UsersFilterDTO) []vo.UserDetailInfo {
+// func (sv *ApiService) GetAll(c *gin.Context, body dto.UsersFilterDTO) []vo.UserDetailInfo {
 // 	var users []vo.UserDetailInfo
-// 	if err := db.Model(uS.ApiModel).Where(body).Find(&users).Error; err != nil {
+// 	if err := db.Model(sv.ApiModel).Where(body).Find(&users).Error; err != nil {
 // 		log.Printf("query users err:%v", err)
 // 		panic(err)
 // 	}
 // 	return users
 // }
-//
-// func (uS *ApiService) GetUserList(c *gin.Context, query dto.QueryPagination, body map[string]interface{}) (result *vo.PaginationResult) {
-// 	//
-//
-// 	var userInfos []vo.UserDetailInfo
-// 	var total int64
-// 	page, pageSize := query.Page, query.PageSize
-//
-// 	//
-// 	offset := (page - 1) * pageSize
-//
-// 	// 获取数据总数和分页数据
-// 	// db.Model(&entity.ApiModel{}).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&userInfos)
-// 	// TODO 通过依赖注入
-// 	db.Model(uS.ApiModel).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&userInfos)
-//
-// 	// 计算总页数
-// 	pages := int(total) / pageSize
-// 	if int(total)%pageSize != 0 {
-// 		pages++
-// 	}
-//
-// 	//
-// 	return &vo.PaginationResult{
-// 		Total:       int(total),
-// 		Pages:       pages,
-// 		CurrentPage: page,
-// 		PageSize:    pageSize,
-// 		Records:     userInfos,
-// 	}
-// }
-//
-// func (uS *ApiService) GetUserDetail(c *gin.Context, id int) (userInfo vo.UserDetailInfo) {
+
+func (sv *ApiService) GetList(c *gin.Context, query dto.QueryPagination, body map[string]interface{}) (result *vo.PaginationResult) {
+	//
+
+	var entities []vo.ApiDetailInfo
+	var total int64
+	page, pageSize := query.Page, query.PageSize
+
+	//
+	offset := (page - 1) * pageSize
+
+	// 获取数据总数和分页数据
+	// db.Model(&entity.ApiModel{}).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&entities)
+	// TODO 通过依赖注入
+	db.Model(sv.ApiModel).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&entities)
+
+	// 计算总页数
+	pages := int(total) / pageSize
+	if int(total)%pageSize != 0 {
+		pages++
+	}
+
+	//
+	return &vo.PaginationResult{
+		Total:       int(total),
+		Pages:       pages,
+		CurrentPage: page,
+		PageSize:    pageSize,
+		Records:     entities,
+	}
+}
+
+// func (sv *ApiService) GetUserDetail(c *gin.Context, id int) (userInfo vo.UserDetailInfo) {
 // 	//
 // 	key := fmt.Sprintf("tmp:user:id:%s", id)
 // 	cachedData, err := rdb.Get(c, key).Result()
@@ -151,7 +150,7 @@ func (uS *ApiService) Import() {
 //
 // }
 //
-// func (uS *ApiService) UpdateUser(c *gin.Context, body dto.UserUpdateDTO) vo.UserDetailInfo {
+// func (sv *ApiService) UpdateUser(c *gin.Context, body dto.UserUpdateDTO) vo.UserDetailInfo {
 // 	id := body.Id
 // 	var user entity.ApiModel
 // 	if result := db.First(&user, id); result.Error != nil {
@@ -173,14 +172,14 @@ func (uS *ApiService) Import() {
 // 	}
 // }
 //
-// func (uS *ApiService) DeleteUser(c *gin.Context, id int) {
-// 	if result := db.First(uS.ApiModel, id); result.Error != nil {
+// func (sv *ApiService) DeleteUser(c *gin.Context, id int) {
+// 	if result := db.First(sv.ApiModel, id); result.Error != nil {
 // 		log.Printf("Failed to find user, error: %v", result.Error)
 // 		panic("failed to find user")
 // 	}
 //
 // 	//
-// 	result := db.Delete(uS.ApiModel, id)
+// 	result := db.Delete(sv.ApiModel, id)
 // 	if result.Error != nil {
 // 		log.Printf("Failed to delete user, error: %v", result.Error)
 // 		panic("failed to delete user")

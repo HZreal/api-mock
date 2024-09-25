@@ -16,7 +16,7 @@ func NewApiController(apiService *service.ApiService) *ApiController {
 	return &ApiController{ApiService: apiService}
 }
 
-func (uC *ApiController) Create(c *gin.Context) {
+func (ctl *ApiController) Create(c *gin.Context) {
 	var body dto.ApiCreateDTO
 
 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -25,56 +25,57 @@ func (uC *ApiController) Create(c *gin.Context) {
 	}
 
 	//
-	data := uC.ApiService.Create(c, body)
+	data := ctl.ApiService.Create(c, body)
 
 	response.SuccessWithData(c, data)
 }
 
-func (uC *ApiController) Import(c *gin.Context) {
+func (ctl *ApiController) Import(c *gin.Context) {
 	//
-	uC.ApiService.Import()
+	ctl.ApiService.Import()
 
 	response.SuccessWithoutData(c)
 }
 
-// func (uC *ApiController) GetAll(c *gin.Context) {
-// 	//
-// 	var body dto.UsersFilterDTO
+//	func (ctl *ApiController) GetAll(c *gin.Context) {
+//		//
+//		var body dto.UsersFilterDTO
 //
-// 	if err := c.ShouldBindJSON(&body); err != nil {
-// 		response.Failed(c, response.ParamsError)
-// 		return
-// 	}
+//		if err := c.ShouldBindJSON(&body); err != nil {
+//			response.Failed(c, response.ParamsError)
+//			return
+//		}
 //
-// 	// 调用服务层
-// 	data := uC.ApiService.GetAll(c, body)
+//		// 调用服务层
+//		data := ctl.ApiService.GetAll(c, body)
 //
-// 	//
-// 	response.SuccessWithData(c, data)
-// }
-//
-// func (uC *ApiController) GetList(c *gin.Context) {
-//
-// 	var query dto.QueryPagination
-// 	if err := c.ShouldBindQuery(&query); err != nil {
-// 		response.Failed(c, response.ParamsError)
-// 		return
-// 	}
-//
-// 	// var body dto.UserListFilterDTO
-// 	var body map[string]interface{}
-// 	if err := c.ShouldBindJSON(&body); err != nil {
-// 		response.Failed(c, response.ParamsError)
-// 		return
-// 	}
-//
-// 	//
-// 	data := uC.ApiService.GetUserList(c, query, body)
-//
-// 	response.SuccessWithData(c, data)
-// }
-//
-// func (uC *ApiController) GetDetail(c *gin.Context) {
+//		//
+//		response.SuccessWithData(c, data)
+//	}
+
+// GetList
+func (ctl *ApiController) GetList(c *gin.Context) {
+
+	var query dto.QueryPagination
+	if err := c.ShouldBindQuery(&query); err != nil {
+		response.Failed(c, response.ParamsError)
+		return
+	}
+
+	// var body dto.UserListFilterDTO
+	var body map[string]interface{}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		response.Failed(c, response.ParamsError)
+		return
+	}
+
+	//
+	data := ctl.ApiService.GetList(c, query, body)
+
+	response.SuccessWithData(c, data)
+}
+
+// func (ctl *ApiController) GetDetail(c *gin.Context) {
 // 	//
 // 	var body dto.QueryId
 //
@@ -84,13 +85,13 @@ func (uC *ApiController) Import(c *gin.Context) {
 // 	}
 //
 // 	// 调用服务层
-// 	data := uC.ApiService.GetUserDetail(c, body.Id)
+// 	data := ctl.ApiService.GetUserDetail(c, body.Id)
 //
 // 	//
 // 	response.SuccessWithData(c, data)
 // }
 //
-// func (uC *ApiController) Update(c *gin.Context) {
+// func (ctl *ApiController) Update(c *gin.Context) {
 // 	var body dto.UserUpdateDTO
 //
 // 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -99,13 +100,13 @@ func (uC *ApiController) Import(c *gin.Context) {
 // 	}
 //
 // 	//
-// 	user := uC.ApiService.UpdateUser(c, body)
+// 	user := ctl.ApiService.UpdateUser(c, body)
 //
 // 	response.SuccessWithData(c, user)
 //
 // }
 //
-// func (uC *ApiController) Delete(c *gin.Context) {
+// func (ctl *ApiController) Delete(c *gin.Context) {
 // 	var body dto.BodyJsonId
 //
 // 	if err := c.ShouldBindJSON(&body); err != nil {
@@ -114,7 +115,7 @@ func (uC *ApiController) Import(c *gin.Context) {
 // 	}
 //
 // 	//
-// 	uC.ApiService.DeleteUser(c, body.Id)
+// 	ctl.ApiService.DeleteUser(c, body.Id)
 //
 // 	response.SuccessWithoutData(c)
 // }

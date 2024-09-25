@@ -12,9 +12,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"gin-init/model/entity"
+	"gin-init/utils"
 	"io"
 	"log"
-	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -35,12 +35,12 @@ type logLine struct {
 }
 
 type record struct {
-	Method      string
-	ReqUriArgs  string
-	Uri         string
-	ContentType string
-	Args        string
-	RequestBody string
+	Method            string
+	ReqUriArgs        string
+	Uri               string
+	ContentType       string
+	Args              string
+	RequestBodyParams []entity.ParamStruct
 }
 
 // TODO 部分过滤的黑名单
@@ -49,61 +49,7 @@ var (
 	suffixBlackList = []string{""}
 )
 
-// ParseBodyP
-// bodyP := "p=%7B%22pagination%22%3A%7B%22current%22%3A1%2C%22pageSize%22%3A10%7D%2C%22sorter%22%3A%7B%7D%2C%22filter%22%3A%7B%7D%7D"
-func ParseBodyP(bodyP string) map[string]interface{} {
-
-	// 第一步：解析 URL-编码的表单数据
-	values, err := url.ParseQuery(bodyP)
-	if err != nil {
-		log.Fatalf("解析 URL 查询参数失败: %v", err)
-	}
-
-	// 提取 'p' 参数的值
-	pValues, exists := values["p"]
-	if !exists || len(pValues) == 0 {
-		log.Fatalf("'p' 参数不存在或为空")
-	}
-	pEncoded := pValues[0]
-
-	// 第二步：URL 解码
-	pDecoded, err := url.QueryUnescape(pEncoded)
-	if err != nil {
-		log.Fatalf("URL 解码失败: %v", err)
-	}
-
-	fmt.Println("解码后的 JSON 字符串:", pDecoded)
-
-	// 第三步：JSON 反序列化
-	var parsedData map[string]interface{}
-	err = json.Unmarshal([]byte(pDecoded), &parsedData)
-	if err != nil {
-		log.Fatalf("JSON 反序列化失败: %v", err)
-	}
-
-	// 输出解析结果
-	fmt.Printf("解析后的 JSON 对象: %+v\n", parsedData)
-	return parsedData
-}
-
-// ParseURLFormEncoded
-// sourceType=1&riskTypeStatus=-1
-func ParseURLFormEncoded(encoded string) (map[string]interface{}, error) {
-	values, err := url.ParseQuery(encoded)
-	if err != nil {
-		return nil, fmt.Errorf("解析 URL 查询参数失败: %v", err)
-	}
-
-	result := make(map[string]interface{})
-	for key, vals := range values {
-		if len(vals) > 0 {
-			result[key] = vals[0]
-		}
-	}
-
-	return result, nil
-}
-
+// TODO 后续改成访问 nginx 日志 目前无法直接获取虚拟机内的日志文件
 func getFilePath() string {
 	return "D:/overall/project/api-mock/public/access.log"
 }
@@ -130,11 +76,12 @@ func unescapeHex(s string) (string, error) {
 	return fixed, nil
 }
 
-func readAndParseLogFile() ([]record, error) {
+// readAndParseLogFile
+func readAndParseLogFile() ([]*record, error) {
 	//
 	filePath := getFilePath()
 
-	var recordArr []record
+	var recordArr []*record
 
 	//
 	openFile, err := os.Open(filePath)
@@ -157,20 +104,20 @@ func readAndParseLogFile() ([]record, error) {
 		strLine := string(line)
 
 		// 全局替换非法转义字符，确保 JSON 可以解析
-		fixedLine, errr := unescapeHex(strLine)
-		if errr != nil {
-			log.Printf("修复转义序列失败: %v\n内容: %s", errr, strLine)
-			panic(errr)
+		fixedLine, err3 := unescapeHex(strLine)
+		if err3 != nil {
+			log.Printf("修复转义序列失败: %v\n内容: %s", err3, strLine)
+			continue
 		}
 
 		//
 		var entry logLine
-		if err3 := json.Unmarshal([]byte(fixedLine), &entry); err3 != nil {
-			fmt.Printf("日志行 Unmarshal 失败: %s, 错误: %v\n", line, err3)
+		if err4 := json.Unmarshal([]byte(fixedLine), &entry); err4 != nil {
+			fmt.Printf("日志行 Unmarshal 失败: %s, 错误: %v\n", line, err4)
 			continue
 		}
 
-		// 过滤掉静态资源请求, 后续可配置名单
+		// TODO 过滤掉静态资源请求, 后续可配置名单
 		if strings.HasSuffix(entry.Uri, ".js") ||
 			strings.HasSuffix(entry.Uri, ".png") ||
 			strings.HasPrefix(entry.Uri, "/skin") {
@@ -190,14 +137,17 @@ func readAndParseLogFile() ([]record, error) {
 			entry.RequestBody = ""
 		}
 
+		// 处理 RequestBody
+		params := parseBody(entry.RequestBody)
+
 		//
-		recordItem := record{
-			Method:      entry.Method,
-			ReqUriArgs:  entry.ReqUriArgs,
-			Uri:         entry.Uri,
-			ContentType: entry.ContentType,
-			Args:        entry.Args,
-			RequestBody: entry.RequestBody,
+		recordItem := &record{
+			Method:            entry.Method,
+			ReqUriArgs:        entry.ReqUriArgs,
+			Uri:               entry.Uri,
+			ContentType:       entry.ContentType,
+			Args:              entry.Args,
+			RequestBodyParams: params,
 		}
 		recordArr = append(recordArr, recordItem)
 	}
@@ -208,27 +158,52 @@ func readAndParseLogFile() ([]record, error) {
 func parseBody(lineBody string) (params []entity.ParamStruct) {
 	var body map[string]interface{}
 
-	if lineBody == "" {
-		//
-		params = []entity.ParamStruct{}
-	} else if strings.HasPrefix(lineBody, "p=") {
-		//
-		body = ParseBodyP(lineBody)
-	} else if strings.Contains(lineBody, "=") {
-		//
-		body, _ = ParseURLFormEncoded(lineBody)
-	} else {
-		err2 := json.Unmarshal([]byte(lineBody), &body)
-		if err2 != nil {
-			fmt.Println("lineBody Unmarshal 失败, params 为空", err2)
-			params = []entity.ParamStruct{}
-		} else {
-			//
-			fmt.Println("lineBody Unmarshal成功 body  ---->  ", body)
+	// TODO 改成策略的形式 类似 map 包含 条件、处理函数
+	// if lineBody == "" {
+	// 	//
+	// 	params = []entity.ParamStruct{}
+	// } else if regexp.MustCompile(`^p=`).MatchString(lineBody) {
+	// 	// else if strings.HasPrefix(lineBody, "p=") {
+	// 	body, _ = ParseBodyP(lineBody)
+	// } else if regexp.MustCompile(`^([a-zA-Z0-9_%+-]+=[^&]*)+(&[a-zA-Z0-9_%+-]+=[^&]*)*$`).MatchString(lineBody) {
+	// 	// else if strings.Contains(lineBody, "=") {
+	// 	body, _ = ParseBodyFormUrlEncoded(lineBody)
+	// } else if json.Valid([]byte(lineBody)) {
+	// 	fmt.Println("lineBody 为 json 对象")
+	// 	_ = json.Unmarshal([]byte(lineBody), &body)
+	// } else {
+	// 	//
+	// 	fmt.Println("未知类型，请检查 ---->  ")
+	// 	params = []entity.ParamStruct{}
+	// }
+
+	for _, handleWay := range handlers {
+		condition := handleWay.Condition
+		Handle := handleWay.Handle
+
+		if condition(lineBody) {
+			var err error
+			body, err = Handle(lineBody)
+			if err != nil {
+				fmt.Println("error in Handle", lineBody)
+			}
+			break
 		}
 	}
 
-	// TODO 处理 body 成参数
+	// TODO 扁平化操作
+	params = bodyParamsToParamStruct(body)
+
+	return
+}
+
+// TODO 扁平化操作
+func bodyParamsToParamStruct(body map[string]interface{}) (params []entity.ParamStruct) {
+	bodyFlatten := make(map[string]interface{})
+	utils.Flatten(body, "", bodyFlatten)
+
+	// 处理成参数对象
+	// for k, v := range bodyFlatten {
 	for k, v := range body {
 		var itemType string
 		switch v.(type) {
@@ -236,14 +211,14 @@ func parseBody(lineBody string) (params []entity.ParamStruct) {
 			itemType = "string"
 		case int:
 			itemType = "int"
-		case float32:
-			itemType = "float32"
 		case float64:
 			itemType = "float64"
 		case bool:
 			itemType = "bool"
-		case map[string]interface{}:
-			itemType = "object"
+		// case map[string]interface{}:
+		// 	itemType = "object"
+		case []interface{}:
+			itemType = "array"
 		default:
 			itemType = "unknown"
 		}
