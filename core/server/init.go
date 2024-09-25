@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"gin-init/config"
+	"gin-init/core/server/routes"
 	"gin-init/middleware"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -50,12 +51,14 @@ func init() {
 	registerRoutes()
 }
 
+// registerRoutes 注册路由
+// 可以优化一下结构
 func registerRoutes() {
-	addSysRouter()
-	addDemoRouter()
-	addUserRouter()
-	addApiRouter()
-	addTaskRouter()
+	routes.AddSysRouter(routerGroup)
+	routes.AddDemoRouter(routerGroup)
+	routes.AddUserRouter(routerGroup)
+	routes.AddApiRouter(routerGroup)
+	routes.AddTaskRouter(routerGroup)
 }
 
 func StartGinServer() {

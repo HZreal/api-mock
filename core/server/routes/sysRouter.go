@@ -1,14 +1,15 @@
-package server
+package routes
 
 import (
 	"gin-init/core/wire"
+	"github.com/gin-gonic/gin"
 )
 
-func addSysRouter() {
+func AddSysRouter(r *gin.RouterGroup) {
 	// sysController := controller.SysController{}
 	appController, _ := wire.InitializeApp()
 
-	sysGroup := routerGroup.Group("sys")
+	sysGroup := r.Group("sys")
 	{
 		// sysGroup.POST("login", sysController.Login)
 		sysGroup.POST("login", appController.SysController.Login)

@@ -1,13 +1,14 @@
-package server
+package routes
 
 import (
 	"gin-init/core/wire"
+	"github.com/gin-gonic/gin"
 )
 
-func addApiRouter() {
+func AddApiRouter(r *gin.RouterGroup) {
 	appController, _ := wire.InitializeApp()
 
-	apiGroup := routerGroup.Group("api")
+	apiGroup := r.Group("api")
 	{
 		apiGroup.POST("info/create", appController.ApiController.Create)
 		apiGroup.POST("action/import", appController.ApiController.Import)

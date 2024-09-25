@@ -1,13 +1,14 @@
-package server
+package routes
 
 import (
 	"gin-init/core/wire"
+	"github.com/gin-gonic/gin"
 )
 
-func addTaskRouter() {
+func AddTaskRouter(r *gin.RouterGroup) {
 	appController, _ := wire.InitializeApp()
 
-	taskGroup := routerGroup.Group("task")
+	taskGroup := r.Group("task")
 	{
 		taskGroup.POST("info/create", appController.TaskController.Create)
 		// taskGroup.POST("info/all", appController.TaskController.GetAllUser)

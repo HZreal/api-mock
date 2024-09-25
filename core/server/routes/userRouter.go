@@ -1,16 +1,17 @@
-package server
+package routes
 
 import (
 	"gin-init/core/wire"
 	"gin-init/middleware"
+	"github.com/gin-gonic/gin"
 	"time"
 )
 
-func addUserRouter() {
+func AddUserRouter(r *gin.RouterGroup) {
 	// userController := controller.UserController{}
 	appController, _ := wire.InitializeApp()
 
-	userGroup := routerGroup.Group("user")
+	userGroup := r.Group("user")
 	{
 		userGroup.POST("info/all", appController.UserController.GetAllUser)
 		// userGroup.GET("info/detail", userController.GetUserDetail)
