@@ -5,11 +5,6 @@ type TaskModel struct {
 	Name         string `gorm:"column:name"`
 	TotalCount   string `gorm:"column:total_count"`
 	SuccessCount string `gorm:"column:success_count"`
-
-	// TODO
-	Uri         string `gorm:"column:uri"`
-	ContentType string `gorm:"column:content_type"`
-	Args        string `gorm:"column:args"`
 }
 
 func NewTaskModel() *TaskModel {
