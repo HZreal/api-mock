@@ -18,21 +18,21 @@ func NewApiService(apiModel *entity.ApiModel) *ApiService {
 }
 
 func (sv *ApiService) Create(c *gin.Context, body dto.ApiCreateDTO) vo.ApiDetailInfo {
-	api := entity.ApiModel{
+	entityObj := entity.ApiModel{
 		Name:   body.Name,
 		Uri:    body.Url,
 		Method: body.Method,
 	}
 
-	if result := db.Create(&api); result.Error != nil {
-		log.Printf("Failed to create api, error: %v", result.Error)
-		panic("failed to create api")
+	if result := db.Create(&entityObj); result.Error != nil {
+		log.Printf("Failed to create entityObj, error: %v", result.Error)
+		panic("failed to create entityObj")
 	}
 	return vo.ApiDetailInfo{
-		Id:     api.Id,
-		Name:   api.Name,
-		Method: api.Method,
-		Params: api.Params,
+		Id:     entityObj.Id,
+		Name:   entityObj.Name,
+		Method: entityObj.Method,
+		Params: entityObj.Params,
 	}
 }
 
@@ -88,8 +88,6 @@ func (sv *ApiService) GetList(c *gin.Context, query dto.QueryPagination, body ma
 	offset := (page - 1) * pageSize
 
 	// 获取数据总数和分页数据
-	// db.Model(&entity.ApiModel{}).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&entities)
-	// TODO 通过依赖注入
 	db.Model(sv.ApiModel).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&entities)
 
 	// 计算总页数
