@@ -16,6 +16,7 @@ func NewApiController(apiService *service.ApiService) *ApiController {
 	return &ApiController{ApiService: apiService}
 }
 
+// Create
 func (ctl *ApiController) Create(c *gin.Context) {
 	var body dto.ApiCreateDTO
 
@@ -29,29 +30,6 @@ func (ctl *ApiController) Create(c *gin.Context) {
 
 	response.SuccessWithData(c, data)
 }
-
-func (ctl *ApiController) Import(c *gin.Context) {
-	//
-	ctl.ApiService.Import()
-
-	response.SuccessWithoutData(c)
-}
-
-//	func (ctl *ApiController) GetAll(c *gin.Context) {
-//		//
-//		var body dto.UsersFilterDTO
-//
-//		if err := c.ShouldBindJSON(&body); err != nil {
-//			response.Failed(c, response.ParamsError)
-//			return
-//		}
-//
-//		// 调用服务层
-//		data := ctl.ApiService.GetAll(c, body)
-//
-//		//
-//		response.SuccessWithData(c, data)
-//	}
 
 // GetList
 func (ctl *ApiController) GetList(c *gin.Context) {
@@ -74,6 +52,30 @@ func (ctl *ApiController) GetList(c *gin.Context) {
 
 	response.SuccessWithData(c, data)
 }
+
+// Import
+func (ctl *ApiController) Import(c *gin.Context) {
+	//
+	ctl.ApiService.Import()
+
+	response.SuccessWithoutData(c)
+}
+
+//	func (ctl *ApiController) GetAll(c *gin.Context) {
+//		//
+//		var body dto.UsersFilterDTO
+//
+//		if err := c.ShouldBindJSON(&body); err != nil {
+//			response.Failed(c, response.ParamsError)
+//			return
+//		}
+//
+//		// 调用服务层
+//		data := ctl.ApiService.GetAll(c, body)
+//
+//		//
+//		response.SuccessWithData(c, data)
+//	}
 
 // func (ctl *ApiController) GetDetail(c *gin.Context) {
 // 	//
