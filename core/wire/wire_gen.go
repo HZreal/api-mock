@@ -32,12 +32,16 @@ func InitializeApp() (*AppControllers, error) {
 	taskModel := entity.NewTaskModel()
 	taskService := service.NewTaskService(taskModel)
 	taskController := controller.NewTaskController(taskService)
+	taskRecordModel := entity.NewTaskRecordModel()
+	taskRecordService := service.NewTaskRecordService(taskRecordModel)
+	taskRecordController := controller.NewTaskRecordController(taskRecordService)
 	appControllers := &AppControllers{
-		DemoController: demoController,
-		SysController:  sysController,
-		UserController: userController,
-		ApiController:  apiController,
-		TaskController: taskController,
+		DemoController:       demoController,
+		SysController:        sysController,
+		UserController:       userController,
+		ApiController:        apiController,
+		TaskController:       taskController,
+		TaskRecordController: taskRecordController,
 	}
 	return appControllers, nil
 }
@@ -54,6 +58,8 @@ var ApiSet = wire.NewSet(controller.NewApiController, service.NewApiService, ent
 
 var TaskSet = wire.NewSet(controller.NewTaskController, service.NewTaskService, entity.NewTaskModel)
 
+var TaskRecordSet = wire.NewSet(controller.NewTaskRecordController, service.NewTaskRecordService, entity.NewTaskRecordModel)
+
 // AppSet 包含了所有模型的 ProviderSet
 var AppSet = wire.NewSet(
 	DemoSet,
@@ -61,12 +67,14 @@ var AppSet = wire.NewSet(
 	UserSet,
 	ApiSet,
 	TaskSet,
+	TaskRecordSet,
 )
 
 type AppControllers struct {
-	DemoController *controller.DemoController
-	SysController  *controller.SysController
-	UserController *controller.UserController
-	ApiController  *controller.ApiController
-	TaskController *controller.TaskController
+	DemoController       *controller.DemoController
+	SysController        *controller.SysController
+	UserController       *controller.UserController
+	ApiController        *controller.ApiController
+	TaskController       *controller.TaskController
+	TaskRecordController *controller.TaskRecordController
 }

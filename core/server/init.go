@@ -59,6 +59,7 @@ func registerRoutes() {
 	routes.AddUserRouter(routerGroup)
 	routes.AddApiRouter(routerGroup)
 	routes.AddTaskRouter(routerGroup)
+	routes.AddTaskRecordRouter(routerGroup)
 }
 
 func StartGinServer() {

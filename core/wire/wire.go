@@ -42,11 +42,11 @@ var TaskSet = wire.NewSet(
 	entity.NewTaskModel,
 )
 
-// var TaskRecordSet = wire.NewSet(
-// 	controller.NewTaskRecordController,
-// 	service.NewTaskRecordService,
-// 	entity.NewTaskRecordModel,
-// )
+var TaskRecordSet = wire.NewSet(
+	controller.NewTaskRecordController,
+	service.NewTaskRecordService,
+	entity.NewTaskRecordModel,
+)
 
 // AppSet 包含了所有模型的 ProviderSet
 var AppSet = wire.NewSet(
@@ -55,17 +55,17 @@ var AppSet = wire.NewSet(
 	UserSet,
 	ApiSet,
 	TaskSet,
-	// TaskRecordSet,
+	TaskRecordSet,
 	// 可以在这里继续添加其他模块的 ProviderSet
 )
 
 type AppControllers struct {
-	DemoController *controller.DemoController
-	SysController  *controller.SysController
-	UserController *controller.UserController
-	ApiController  *controller.ApiController
-	TaskController *controller.TaskController
-	// TaskRecordController *controller.TaskRecordController
+	DemoController       *controller.DemoController
+	SysController        *controller.SysController
+	UserController       *controller.UserController
+	ApiController        *controller.ApiController
+	TaskController       *controller.TaskController
+	TaskRecordController *controller.TaskRecordController
 }
 
 // InitializeApp 初始化整个应用的控制器
