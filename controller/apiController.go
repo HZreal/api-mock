@@ -57,7 +57,7 @@ func (ctl *ApiController) GetList(c *gin.Context) {
 func (ctl *ApiController) Import(c *gin.Context) {
 	//
 	ctl.ApiService.Import()
-
+	//
 	response.SuccessWithoutData(c)
 }
 
