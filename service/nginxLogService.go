@@ -71,7 +71,8 @@ func unescapeHex(s string) (string, error) {
 		if err != nil {
 			return match // 保留原始
 		}
-		return string(b)
+		// return string(b)
+		return strconv.FormatUint(b, 10)
 	})
 	return fixed, nil
 }
