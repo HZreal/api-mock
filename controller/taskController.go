@@ -31,6 +31,22 @@ func (ctl *TaskController) Create(c *gin.Context) {
 	response.SuccessWithData(c, data)
 }
 
+// Start
+func (ctl *TaskController) Start(c *gin.Context) {
+
+	//
+	service.Run()
+
+	response.SuccessWithoutData(c)
+}
+
+// CreateStart
+func (ctl *TaskController) CreateStart(c *gin.Context) {
+
+	//
+	response.SuccessWithoutData(c)
+}
+
 // GetList
 func (ctl *TaskController) GetList(c *gin.Context) {
 
