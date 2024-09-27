@@ -40,7 +40,7 @@ type record struct {
 	Uri               string
 	ContentType       string
 	Args              string
-	RequestBodyParams []entity.ParamStruct
+	RequestBodyParams []*entity.ParamStruct
 }
 
 // TODO 部分过滤的黑名单
@@ -156,7 +156,7 @@ func readAndParseLogFile() ([]*record, error) {
 }
 
 // 处理 body
-func parseBody(lineBody string) (params []entity.ParamStruct) {
+func parseBody(lineBody string) (params []*entity.ParamStruct) {
 	var body map[string]interface{}
 
 	// TODO 改成策略的形式 类似 map 包含 条件、处理函数
@@ -199,31 +199,61 @@ func parseBody(lineBody string) (params []entity.ParamStruct) {
 }
 
 // TODO 扁平化操作
-func bodyParamsToParamStruct(body map[string]interface{}) (params []entity.ParamStruct) {
-	bodyFlatten := make(map[string]interface{})
-	utils.Flatten(body, "", bodyFlatten)
+func bodyParamsToParamStruct(body map[string]interface{}) (params []*entity.ParamStruct) {
+	if len(body) == 0 {
+		return
+	}
 
+	//
+	bodyFlatten := utils.Flatten(body)
 	// 处理成参数对象
-	// for k, v := range bodyFlatten {
-	for k, v := range body {
+	// for k, v := range body {
+	for k, v := range bodyFlatten {
 		var itemType string
-		switch v.(type) {
+		var mock string
+		switch i := v.(type) {
 		case string:
+			//
 			itemType = "string"
+			//
+			isIntString := utils.IsIntegerString(i)
+			mock = fmt.Sprintf("@string@(len=%d)(isIntString=%d)", len(i), isIntString)
 		case int:
+			//
 			itemType = "int"
+			//
+			posiOrNega := utils.CheckPositiveOrNegative(i)
+			lenCount := utils.DigitCount(i)
+			mock = fmt.Sprintf("@int@(posiOrNega=%s)(len=%d)", posiOrNega, lenCount)
 		case float64:
 			itemType = "float64"
+			//
+			posiOrNega := utils.CheckPositiveOrNegative(i)
+			integerDigits, decimalDigits := utils.CountDigits(i)
+			mock = fmt.Sprintf("@float@(posiOrNega=%s)(integer=%d)(decimal=%d)", posiOrNega, integerDigits, decimalDigits)
 		case bool:
 			itemType = "bool"
-		// case map[string]interface{}:
-		// 	itemType = "object"
+			mock = fmt.Sprintf("@bool@")
+		case map[string]interface{}:
+			if len(i) != 0 {
+				log.Printf("不是空 map, Flatten 可能出错；k=%s,v=%s", k, v)
+				continue
+			}
+			itemType = "emptyObject"
+			//
+			mock = fmt.Sprintf("@emptyObject@")
 		case []interface{}:
-			itemType = "array"
+			if len(i) != 0 {
+				log.Printf("不是空 [], Flatten 可能出错；k=%s,v=%s", k, v)
+				continue
+			}
+			itemType = "emptyArray"
+			//
+			mock = fmt.Sprintf("@emptyArray@")
 		default:
 			itemType = "unknown"
 		}
-		item := entity.ParamStruct{Name: k, Type: itemType}
+		item := &entity.ParamStruct{Name: k, Type: itemType, Mock: mock}
 		params = append(params, item)
 	}
 
