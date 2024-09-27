@@ -24,6 +24,7 @@ var DB *gorm.DB
 func init() {
 	// 连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
 	var err error
+	// dsn = "root:root123456@tcp(127.0.0.1:53306)/api_mock?charset=utf8mb4&parseTime=True&loc=Local&timeout="
 	DB, err = gorm.Open(mysql.Open(config.Conf.Mysql.GetDsn()), &gorm.Config{
 		SkipDefaultTransaction: true,
 	})
@@ -72,10 +73,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	logEntries, err := service.ReadAndParseLogFile(*filePath)
-	if err != nil {
-		return
-	}
+	fmt.Println("filePath  ---->  ", *filePath)
 
-	importToDb(logEntries)
+	// logEntries, err := service.ReadAndParseLogFile(*filePath)
+	// if err != nil {
+	// 	return
+	// }
+	//
+	// importToDb(logEntries)
 }
