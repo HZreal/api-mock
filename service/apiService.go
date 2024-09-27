@@ -37,7 +37,7 @@ func (sv *ApiService) Create(c *gin.Context, body dto.ApiCreateDTO) vo.ApiDetail
 }
 
 func (sv *ApiService) Import() {
-	logEntries, err := readAndParseLogFile()
+	logEntries, err := Import()
 	if err != nil {
 		return
 	}

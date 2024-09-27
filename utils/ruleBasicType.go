@@ -45,6 +45,12 @@ func IsIntegerString(s string) int {
 	return 1
 }
 
+// FloatIsInteger 浮点数是否可整数
+func FloatIsInteger(val float64) bool {
+	_, frac := math.Modf(val)
+	return frac == 0
+}
+
 // CountDigits 获取浮点数小数点前后的位数
 func CountDigits(num float64) (int, int) {
 	// 取绝对值

@@ -18,6 +18,12 @@ import (
 	"time"
 )
 
+// TODO 规则结构体
+type Rule struct {
+	Prefix string            // 前缀，表示类型
+	Params map[string]string // 键值对规则
+}
+
 // 模拟生成数据
 // TODO ！！！ 待优化，改成 策略枚举的形式，未来可以 自定义规则
 func generate(params []*entity.ParamStruct) map[string]interface{} {

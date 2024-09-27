@@ -34,7 +34,7 @@ type logLine struct {
 	SentContentType string `json:"sent_content_type"`
 }
 
-type record struct {
+type Record struct {
 	Method            string
 	ReqUriArgs        string
 	Uri               string
@@ -77,12 +77,10 @@ func unescapeHex(s string) (string, error) {
 	return fixed, nil
 }
 
-// readAndParseLogFile
-func readAndParseLogFile() ([]*record, error) {
+// ReadAndParseLogFile
+func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 	//
-	filePath := getFilePath()
-
-	var recordArr []*record
+	var recordArr []*Record
 
 	//
 	openFile, err := os.Open(filePath)
@@ -142,7 +140,7 @@ func readAndParseLogFile() ([]*record, error) {
 		params := parseBody(entry.RequestBody)
 
 		//
-		recordItem := &record{
+		recordItem := &Record{
 			Method:            entry.Method,
 			ReqUriArgs:        entry.ReqUriArgs,
 			Uri:               entry.Uri,
@@ -218,19 +216,22 @@ func bodyParamsToParamStruct(body map[string]interface{}) (params []*entity.Para
 			//
 			isIntString := utils.IsIntegerString(i)
 			mock = fmt.Sprintf("@string@(len=%d)(isIntString=%d)", len(i), isIntString)
-		case int:
-			//
-			itemType = "int"
-			//
-			posiOrNega := utils.CheckPositiveOrNegative(i)
-			lenCount := utils.DigitCount(i)
-			mock = fmt.Sprintf("@int@(posiOrNega=%s)(len=%d)", posiOrNega, lenCount)
 		case float64:
-			itemType = "float64"
-			//
-			posiOrNega := utils.CheckPositiveOrNegative(i)
-			integerDigits, decimalDigits := utils.CountDigits(i)
-			mock = fmt.Sprintf("@float@(posiOrNega=%s)(integer=%d)(decimal=%d)", posiOrNega, integerDigits, decimalDigits)
+			if utils.FloatIsInteger(i) {
+				// int
+				itemType = "int"
+				//
+				posiOrNega := utils.CheckPositiveOrNegative(i)
+				lenCount := utils.DigitCount(int(i))
+				mock = fmt.Sprintf("@int@(posiOrNega=%s)(len=%d)", posiOrNega, lenCount)
+			} else {
+				// float
+				itemType = "float64"
+				//
+				posiOrNega := utils.CheckPositiveOrNegative(i)
+				integerDigits, decimalDigits := utils.CountDigits(i)
+				mock = fmt.Sprintf("@float@(posiOrNega=%s)(integer=%d)(decimal=%d)", posiOrNega, integerDigits, decimalDigits)
+			}
 		case bool:
 			itemType = "bool"
 			mock = fmt.Sprintf("@bool@")
@@ -258,4 +259,9 @@ func bodyParamsToParamStruct(body map[string]interface{}) (params []*entity.Para
 	}
 
 	return
+}
+
+func Import() ([]*Record, error) {
+	filePath := getFilePath()
+	return ReadAndParseLogFile(filePath)
 }
