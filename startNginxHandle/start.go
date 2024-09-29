@@ -10,10 +10,9 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gin-init/config"
+	"gin-init/database"
 	"gin-init/model/entity"
 	"gin-init/service"
-	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"log"
 	"os"
@@ -22,18 +21,7 @@ import (
 var DB *gorm.DB
 
 func init() {
-	// 连接MYSQL, 获得DB类型实例，用于后面的数据库读写操作。
-	var err error
-	// dsn = "root:root123456@tcp(127.0.0.1:53306)/api_mock?charset=utf8mb4&parseTime=True&loc=Local&timeout="
-	DB, err = gorm.Open(mysql.Open(config.Conf.Mysql.GetDsn()), &gorm.Config{
-		SkipDefaultTransaction: true,
-	})
-	if err != nil {
-		fmt.Println("[api init error]连接Mysql数据库失败, error=" + err.Error())
-		return
-	}
-	// 连接成功
-	fmt.Println("[Success] Mysql数据库连接成功！！！")
+	DB = database.DB
 }
 
 // importToDb
@@ -59,26 +47,29 @@ func importToDb(logEntries []*service.Record) {
 		}
 
 	}
-
 }
+
+// parseAndImport)
+func parseAndImport(filePath string) {
+	logEntries, err := service.ReadAndParseLogFile(filePath)
+	if err != nil {
+		return
+	}
+
+	importToDb(logEntries)
+}
+
 func main() {
-	// TODO 确定 filePath 的来源方式
 	// filePath := "D:/overall/project/api-mock/public/access.log"
 	filePath := flag.String("file", "", "Path to the log file")
-
 	flag.Parse()
 
 	if *filePath == "" {
 		fmt.Println("Please provide a log file path using the -file flag.")
 		os.Exit(1)
 	}
-
 	fmt.Println("filePath  ---->  ", *filePath)
 
-	// logEntries, err := service.ReadAndParseLogFile(*filePath)
-	// if err != nil {
-	// 	return
-	// }
 	//
-	// importToDb(logEntries)
+	parseAndImport(*filePath)
 }
