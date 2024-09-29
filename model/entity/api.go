@@ -15,6 +15,8 @@ type ApiModel struct {
 	Uri         string         `gorm:"column:uri"`
 	ContentType string         `gorm:"column:content_type"`
 	Args        string         `gorm:"column:args"`
+	BodyType    uint           `gorm:"column:body_type"`
+	RequestBody string         `gorm:"column:request_body"`
 	Params      []*ParamStruct `gorm:"column:params;serializer:json"`
 }
 

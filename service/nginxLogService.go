@@ -40,6 +40,8 @@ type Record struct {
 	Uri               string
 	ContentType       string
 	Args              string
+	BodyType          uint
+	RequestBody       string
 	RequestBodyParams []*entity.ParamStruct
 }
 
@@ -119,6 +121,8 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 		// TODO 过滤掉静态资源请求, 后续可配置名单
 		if strings.HasSuffix(entry.Uri, ".js") ||
 			strings.HasSuffix(entry.Uri, ".png") ||
+			strings.Contains(entry.Uri, "favicon.ico") ||
+			strings.HasPrefix(entry.Uri, "/pub") ||
 			strings.HasPrefix(entry.Uri, "/skin") {
 			continue
 		}
@@ -137,7 +141,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 		}
 
 		// 处理 RequestBody
-		params := parseBody(entry.RequestBody)
+		params, bodyType := parseBody(entry.RequestBody)
 
 		//
 		recordItem := &Record{
@@ -146,6 +150,8 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 			Uri:               entry.Uri,
 			ContentType:       entry.ContentType,
 			Args:              entry.Args,
+			RequestBody:       entry.RequestBody,
+			BodyType:          bodyType,
 			RequestBodyParams: params,
 		}
 		recordArr = append(recordArr, recordItem)
@@ -154,7 +160,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 }
 
 // 处理 body
-func parseBody(lineBody string) (params []*entity.ParamStruct) {
+func parseBody(lineBody string) (params []*entity.ParamStruct, bodyType uint) {
 	var body map[string]interface{}
 
 	// TODO 改成策略的形式 类似 map 包含 条件、处理函数
@@ -182,7 +188,7 @@ func parseBody(lineBody string) (params []*entity.ParamStruct) {
 
 		if condition(lineBody) {
 			var err error
-			body, err = Handle(lineBody)
+			body, bodyType, err = Handle(lineBody)
 			if err != nil {
 				fmt.Println("error in Handle", lineBody)
 			}

@@ -8,6 +8,7 @@ package main
  */
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"gin-init/database"
@@ -30,21 +31,63 @@ func importToDb(logEntries []*service.Record) {
 		fmt.Println("i  ---->  ", i)
 
 		//
+		var existingApi entity.ApiModel
+		if err := DB.Where("uri_args = ? AND method = ?", line.ReqUriArgs, line.Method).First(&existingApi).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// 记录不存在，创建新记录
+				r := entity.ApiModel{
+					Name:        line.ReqUriArgs,
+					Method:      line.Method,
+					UriArgs:     line.ReqUriArgs,
+					Uri:         line.Uri,
+					ContentType: line.ContentType,
+					Args:        line.Args,
+					BodyType:    line.BodyType,
+					RequestBody: line.RequestBody,
+					Params:      line.RequestBodyParams,
+				}
+				if result := DB.Create(&r); result.Error != nil {
+					log.Printf("Failed to create api, error: %v", result.Error)
+					continue
+				}
+			} else {
+				// 其他查询错误
+				log.Printf("Failed to query api, error: %v", err)
+				continue
+			}
+		} else {
+			// 记录已存在，执行更新操作
+			existingApi.Name = line.ReqUriArgs
+			existingApi.Method = line.Method
+			existingApi.Uri = line.Uri
+			existingApi.ContentType = line.ContentType
+			existingApi.Args = line.Args
+			existingApi.BodyType = line.BodyType
+			existingApi.RequestBody = line.RequestBody
+			existingApi.Params = line.RequestBodyParams
+
+			if result := DB.Save(&existingApi); result.Error != nil {
+				log.Printf("Failed to update api, error: %v", result.Error)
+				continue
+			}
+		}
 
 		// 逐一入库，后续会更新
-		r := entity.ApiModel{
-			Name:        "xxx",
-			Method:      line.Method,
-			UriArgs:     line.ReqUriArgs,
-			Uri:         line.Uri,
-			ContentType: line.ContentType,
-			Args:        line.Args,
-			Params:      line.RequestBodyParams,
-		}
-		if result := DB.Create(&r); result.Error != nil {
-			log.Printf("Failed to create api, error: %v", result.Error)
-			continue
-		}
+		// r := entity.ApiModel{
+		// 	Name:        "xxx",
+		// 	Method:      line.Method,
+		// 	UriArgs:     line.ReqUriArgs,
+		// 	Uri:         line.Uri,
+		// 	ContentType: line.ContentType,
+		// 	Args:        line.Args,
+		// 	BodyType:    line.BodyType,
+		// 	RequestBody: line.RequestBody,
+		// 	Params:      line.RequestBodyParams,
+		// }
+		// if result := DB.Create(&r); result.Error != nil {
+		// 	log.Printf("Failed to create api, error: %v", result.Error)
+		// 	continue
+		// }
 
 	}
 }
