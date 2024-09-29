@@ -65,56 +65,26 @@ func (sv *TaskService) GetList(c *gin.Context, query dto.QueryPagination, body m
 
 // /////////////////////////////////////////// 以下接口待调整 //////////////////////////////////////////////////
 
-// func (sv *TaskService) GetAll(c *gin.Context, body dto.UsersFilterDTO) []vo.UserDetailInfo {
-// 	var users []vo.UserDetailInfo
-// 	if err := db.Model(sv.TaskModel).Where(body).Find(&users).Error; err != nil {
-// 		log.Printf("query users err:%v", err)
-// 		panic(err)
-// 	}
-// 	return users
-// }
+func (sv *TaskService) GetAll(c *gin.Context, body dto.TaskCreateDTO) []vo.TaskDetailInfo {
+	var entities []vo.TaskDetailInfo
+	if err := db.Model(sv.TaskModel).Where(body).Find(&entities).Error; err != nil {
+		log.Printf("query entities err:%v", err)
+		panic(err)
+	}
+	return entities
+}
 
-// func (sv *TaskService) GetUserDetail(c *gin.Context, id int) (userInfo vo.UserDetailInfo) {
-// 	//
-// 	key := fmt.Sprintf("tmp:user:id:%s", id)
-// 	cachedData, err := rdb.Get(c, key).Result()
-// 	if err == redis.Nil {
-// 		// 无缓存
-// 		affected := db.Take(&entity.TaskModel{}, id).Scan(&userInfo).RowsAffected
-// 		if affected == 0 {
-// 			log.Printf("No user found with ID: %s", id)
-// 			return
-// 		}
-//
-// 		// 将查询结果序列化为 JSON 字符串
-// 		unitInfoJson, err := json.Marshal(userInfo)
-// 		if err != nil {
-// 			log.Printf("Failed to serialize data for user ID: %s, error: %v", id, err)
-// 			panic("failed to serialize data")
-// 		}
-//
-// 		// 将数据缓存到 Redis，设置缓存过期时间为 30 S
-// 		err = rdb.Set(c, key, unitInfoJson, 30*time.Second).Err()
-// 		if err != nil {
-// 			panic("failed to save data")
-// 		}
-//
-// 		return userInfo
-//
-// 	} else if err != nil {
-// 		log.Printf("Failed to get cache for key: %s, error: %v", key, err)
-// 		panic("failed to get cache")
-// 	} else {
-// 		// 如果缓存中有数据，返回缓存数据
-// 		if err := json.Unmarshal([]byte(cachedData), &userInfo); err != nil {
-// 			log.Printf("Failed to deserialize cache data for user ID: %s, error: %v", id, err)
-// 			panic("failed to deserialize cache data")
-// 		}
-//
-// 		return userInfo
-// 	}
-//
-// }
+func (sv *TaskService) GetDetail(c *gin.Context, id int) (userInfo vo.UserDetailInfo) {
+	//
+	affected := db.Take(sv.TaskModel, id).Scan(&userInfo).RowsAffected
+	if affected == 0 {
+		log.Printf("No entity found with ID: %d", id)
+		return
+	}
+
+	return
+}
+
 //
 // func (sv *TaskService) UpdateUser(c *gin.Context, body dto.UserUpdateDTO) vo.UserDetailInfo {
 // 	id := body.Id
