@@ -13,7 +13,76 @@ import (
 	"gin-init/service"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"time"
+)
+
+var (
+	loginExecScript = []string{
+		"// 提取响应中的 Cookies\r",
+		"let cookies = pm.cookies;\r",
+		"\r",
+		"// 提取 'srv_session_id' Cookie 并存储到环境变量\r",
+		"if (cookies.has('srv_session_id')) {\r",
+		"    let srvSessionId = cookies.get('srv_session_id');\r",
+		"    pm.environment.set('srv_session_id', srvSessionId);\r",
+		"    console.log('srv_session_id:', srvSessionId);\r",
+		"} else {\r",
+		"    console.warn('srv_session_id not found in response cookies.');\r",
+		"}\r",
+		"\r",
+		"// 提取 'PHPSESSID' Cookie 并存储到环境变量\r",
+		"if (cookies.has('PHPSESSID')) {\r",
+		"    let phpSessionId = cookies.get('PHPSESSID');\r",
+		"    pm.environment.set('PHPSESSID', phpSessionId);\r",
+		"    console.log('PHPSESSID:', phpSessionId);\r",
+		"} else {\r",
+		"    console.warn('PHPSESSID not found in response cookies.');\r",
+		"}\r",
+	}
+
+	responseAssertScript = []string{
+		"pm.test(\"msg:成功，错误：0，响应码：200\", function () {\r",
+		"    var jsonData = pm.response.json();\r",
+		// "    pm.expect(jsonData.result.msg).to.eql(\"成功\");\r",
+		"    pm.expect(jsonData.result.error).to.eql(0);\r",
+		"    pm.response.to.have.status(200);\r",
+		"});\r",
+	}
+
+	pprerequestScript = []string{
+		"// 生成 1 到 10000 的随机页码\r",
+		"let currentPage = Math.floor(Math.random() * 10000) + 1; // 生成 1 到 10000 之间的正整数\r",
+		"\r",
+		"// 允许的 pageSize 枚举值\r",
+		"let pageSizeOptions = [10, 20, 30, 50, 100];\r",
+		"let pageSize = pageSizeOptions[Math.floor(Math.random() * pageSizeOptions.length)];\r",
+		"\r",
+		"// 生成 JSON 字符串，包含分页、排序和过滤信息\r",
+		"let requestPayload = {\r",
+		"    pagination: {\r",
+		"        current: currentPage,\r",
+		"        pageSize: pageSize\r",
+		"    },\r",
+		"    sorter: {},\r",
+		"    filter: {}\r",
+		"};\r",
+		"\r",
+		"// 转换为 JSON 字符串\r",
+		"let requestPayloadString = JSON.stringify(requestPayload);\r",
+		"\r",
+		"// 将生成的字符串设置为键 `p` 的值\r",
+		"pm.request.body.update({\r",
+		"    mode: 'urlencoded',\r",
+		"    urlencoded: [\r",
+		"        { key: 'p', value: requestPayloadString, type: 'text' }\r",
+		"    ]\r",
+		"});\r",
+		"\r",
+		"// 输出到控制台，便于调试\r",
+		"console.log('Updated request body:', requestPayloadString);\r",
+	}
 )
 
 type PostmanCollection struct {
@@ -258,7 +327,7 @@ func doTest() {
 	}
 
 	// 将结构体转换为 JSON
-	file, err := os.Create("public/postman_collection.json")
+	file, err := os.Create("public/postman_collection_test.json")
 	if err != nil {
 		fmt.Println("Error creating file:", err)
 		return
@@ -275,7 +344,24 @@ func doTest() {
 		return
 	}
 
-	fmt.Println("Postman collection saved to postman_collection.json")
+	fmt.Println("Postman collection saved to postman_collection_test.json")
+}
+
+func parseUrlencodeArgs(args string) []KVItem {
+	values, err := url.ParseQuery(args)
+	if err != nil {
+		return []KVItem{}
+	}
+
+	var queries []KVItem
+	for key, vals := range values {
+		//
+		for _, val := range vals {
+			queries = append(queries, KVItem{Key: key, Value: val})
+		}
+	}
+
+	return queries
 }
 
 func start(fileName string) {
@@ -283,7 +369,7 @@ func start(fileName string) {
 	collection := PostmanCollection{
 		Info: Info{
 			PostmanID: "a24ee69f-7e18-4a96-8e6b-191951929321",
-			Name:      "Generated Collection",
+			Name:      "OKCC-Collection-" + strconv.FormatInt(time.Now().Unix(), 10),
 			Schema:    "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		},
 	}
@@ -303,6 +389,19 @@ func start(fileName string) {
 
 		//
 		body := Body{}
+		testEvent := Event{
+			Listen: "test",
+			Script: Script{
+				Exec: responseAssertScript,
+				Type: "text/javascript",
+			},
+		}
+		var events []Event
+		if strings.Contains(entry.Args, "m=login") {
+			testEvent.Script.Exec = loginExecScript
+		}
+		events = append(events, testEvent)
+
 		if entry.ContentType == "application/json" {
 			// 几乎没有这种情况
 			body.Mode = "raw"
@@ -314,13 +413,21 @@ func start(fileName string) {
 			}
 		} else if entry.ContentType == "application/x-www-form-urlencoded" {
 			// 主要是这种情况
-			body.Mode = "urlencode"
+			body.Mode = "urlencoded"
 
 			if entry.BodyType == 2 {
 				// p=
 				body.Urlencoded = []KVItem{
 					{Key: "p", Value: "{\"pagination\":{\"current\":1,\"pageSize\":10},\"sorter\":{},\"filter\":{}}"},
 				}
+				prerequestEvent := Event{
+					Listen: "prerequest",
+					Script: Script{
+						Exec: pprerequestScript,
+						Type: "text/javascript",
+					},
+				}
+				events = append(events, prerequestEvent)
 			} else if entry.BodyType == 3 {
 				// a=1&b=2
 				body.Urlencoded = parseUrlencodeArgs(entry.RequestBody)
@@ -342,7 +449,7 @@ func start(fileName string) {
 					// },
 					{
 						Key:   "Cookie",
-						Value: "srv_session_id={{srv_session_id}}; PHPSESSID={{php_session_id}}; rememberMe=false; customerName=; userName=",
+						Value: "srv_session_id={{srv_session_id}}; PHPSESSID={{PHPSESSID}}; rememberMe={{rememberMe}}; customerName={{customerName}}; userName={{userName}}",
 					},
 					{
 						Key:   "Content-Type",
@@ -360,29 +467,7 @@ func start(fileName string) {
 				Body: body,
 			},
 			Response: []string{},
-			Event: []Event{
-				{
-					Listen: "test",
-					Script: Script{
-						Exec: []string{
-							"//var usertest = postman.getResponseHeader(\"Authorization\");\r",
-							"//var usertoken = JSON.parse(responseBody);\r",
-							"//pm.environment.set(\"token\",usertoken.data.response.seq);\r",
-							"//pm.globals.set(\"test\",usertest);\r",
-							"\r",
-							"pm.test(\"msg:成功，错误：0，响应码：200\", function () {\r",
-							"    var jsonData = pm.response.json();\r",
-							"    pm.expect(jsonData.result.msg).to.eql(\"成功\");\r",
-							"    pm.expect(jsonData.result.error).to.eql(0);\r",
-							"    pm.response.to.have.status(200);\r",
-							"});\r",
-							"\r",
-							"",
-						},
-						Type: "text/javascript",
-					},
-				},
-			},
+			Event:    events,
 		}
 
 		//
@@ -390,7 +475,7 @@ func start(fileName string) {
 	}
 
 	// 将结构体转换为 JSON
-	file, err := os.Create("public/postman_collection_1.json")
+	file, err := os.Create("public/postman_collection.json")
 	if err != nil {
 		fmt.Println("Error creating file:", err)
 		return
@@ -410,26 +495,9 @@ func start(fileName string) {
 	fmt.Println("Postman collection saved to postman_collection.json")
 }
 
-func parseUrlencodeArgs(args string) []KVItem {
-	values, err := url.ParseQuery(args)
-	if err != nil {
-		return []KVItem{}
-	}
-
-	var queries []KVItem
-	for key, vals := range values {
-		//
-		for _, val := range vals {
-			queries = append(queries, KVItem{Key: key, Value: val})
-		}
-	}
-
-	return queries
-}
-
 func main() {
 	// doTest()
 
-	fileName := "D:/overall/project/api-mock/public/access.log"
+	fileName := "D:/overall/project/api-mock/public/access.0930.log"
 	start(fileName)
 }
