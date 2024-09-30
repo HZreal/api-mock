@@ -3,14 +3,15 @@ create table tb_api
 (
     id           int auto_increment
         primary key,
-    name         varchar(16)  null comment '名称',
-    uri          varchar(128) null comment '路径',
-    args         varchar(128) null comment '路径参数',
-    method       varchar(8)   null,
-    params       json         null comment '参数',
-    content_type varchar(64)  null,
-    uri_args     varchar(256) null comment '带 args 路径',
-    body         varchar(512) null
+    name         varchar(256)     null comment '名称',
+    uri          varchar(128)     null comment '路径',
+    args         varchar(128)     null comment '路径参数',
+    method       varchar(8)       null,
+    params       json             null comment '参数',
+    content_type varchar(64)      null,
+    uri_args     varchar(256)     null comment '带 args 路径',
+    request_body varchar(512)     null,
+    body_type    tinyint unsigned null
 )
     comment '接口表';
 
@@ -40,4 +41,14 @@ create table tb_task_record
     response json                         null comment '结果',
     status   tinyint unsigned default '0' not null comment '状态：0 - 待处理；1 - 进行中；2 - 已完成；3 - 失败',
     cost     mediumint unsigned           null comment '时间消耗 ms'
+);
+
+--
+create table tb_rule
+(
+    id    int auto_increment
+        primary key,
+    name  varchar(16)                  null comment '名称',
+    rules json                         null comment '规则对',
+    type  tinyint unsigned default '0' not null comment '规则类型: 0 - 基本类型；1 - 业务类型'
 );
