@@ -53,7 +53,7 @@ var (
 
 // TODO 后续改成访问 nginx 日志 目前无法直接获取虚拟机内的日志文件
 func getFilePath() string {
-	return "D:/overall/project/api-mock/public/access.log"
+	return "D:/overall/project/api-mock/public/access.0930.log"
 }
 
 func unescapeRequestBody(input string) string {
@@ -123,6 +123,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 			strings.HasSuffix(entry.Uri, ".png") ||
 			strings.Contains(entry.Uri, "favicon.ico") ||
 			strings.HasPrefix(entry.Uri, "/pub") ||
+			strings.Contains(entry.Args, "f=logout") ||
 			strings.HasPrefix(entry.Uri, "/skin") {
 			continue
 		}
@@ -182,16 +183,28 @@ func parseBody(lineBody string) (params []*entity.ParamStruct, bodyType uint) {
 	// 	params = []entity.ParamStruct{}
 	// }
 
-	for _, handleWay := range handlers {
-		condition := handleWay.Condition
-		Handle := handleWay.Handle
+	// for _, handleWay := range handlers {
+	// 	condition := handleWay.Condition
+	// 	Handle := handleWay.Handle
+	//
+	// 	if condition(lineBody) {
+	// 		var err error
+	// 		body, bodyType, err = Handle(lineBody)
+	// 		if err != nil {
+	// 			fmt.Println("error in Handle", lineBody)
+	// 		}
+	// 		break
+	// 	}
+	// }
 
-		if condition(lineBody) {
+	for _, handlerItem := range Handlers {
+		if handlerItem.Condition(lineBody) {
 			var err error
-			body, bodyType, err = Handle(lineBody)
+			body, err = handlerItem.BodyHandle(lineBody)
 			if err != nil {
-				fmt.Println("error in Handle", lineBody)
+				fmt.Println("error in BodyHandle", lineBody)
 			}
+			bodyType = handlerItem.GetBodyType()
 			break
 		}
 	}

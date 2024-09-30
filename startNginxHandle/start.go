@@ -103,7 +103,7 @@ func parseAndImport(filePath string) {
 }
 
 func main() {
-	// filePath := "D:/overall/project/api-mock/public/access.log"
+	// filePath := "D:/overall/project/api-mock/public/access.0930.log"
 	filePath := flag.String("file", "", "Path to the log file")
 	flag.Parse()
 
