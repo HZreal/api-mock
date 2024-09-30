@@ -9,14 +9,12 @@ package main
 
 import (
 	"errors"
-	"flag"
 	"fmt"
 	"gin-init/database"
 	"gin-init/model/entity"
 	"gin-init/service"
 	"gorm.io/gorm"
 	"log"
-	"os"
 )
 
 var DB *gorm.DB
@@ -30,7 +28,7 @@ func importToDb(logEntries []*service.Record) {
 	for i, line := range logEntries {
 		fmt.Println("i  ---->  ", i)
 
-		//
+		// TODO 改为 redis 解决重复性问题
 		var existingApi entity.ApiModel
 		if err := DB.Where("uri_args = ? AND method = ?", line.ReqUriArgs, line.Method).First(&existingApi).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -103,16 +101,16 @@ func parseAndImport(filePath string) {
 }
 
 func main() {
-	// filePath := "D:/overall/project/api-mock/public/access.0930.log"
-	filePath := flag.String("file", "", "Path to the log file")
-	flag.Parse()
-
-	if *filePath == "" {
-		fmt.Println("Please provide a log file path using the -file flag.")
-		os.Exit(1)
-	}
-	fmt.Println("filePath  ---->  ", *filePath)
+	filePath := "D:/overall/project/api-mock/public/access.0930.log"
+	// filePath := flag.String("file", "", "Path to the log file")
+	// flag.Parse()
+	//
+	// if *filePath == "" {
+	// 	fmt.Println("Please provide a log file path using the -file flag.")
+	// 	os.Exit(1)
+	// }
+	// fmt.Println("filePath  ---->  ", *filePath)
 
 	//
-	parseAndImport(*filePath)
+	parseAndImport(filePath)
 }

@@ -364,7 +364,7 @@ func parseUrlencodeArgs(args string) []KVItem {
 	return queries
 }
 
-func start(fileName string) {
+func start(fileName string, collectionName string) {
 	// 创建 Postman Collection
 	collection := PostmanCollection{
 		Info: Info{
@@ -475,7 +475,7 @@ func start(fileName string) {
 	}
 
 	// 将结构体转换为 JSON
-	file, err := os.Create("public/postman_collection.json")
+	file, err := os.Create("public/0930/postman_collection_" + collectionName)
 	if err != nil {
 		fmt.Println("Error creating file:", err)
 		return
@@ -498,6 +498,7 @@ func start(fileName string) {
 func main() {
 	// doTest()
 
-	fileName := "D:/overall/project/api-mock/public/access.0930.log"
-	start(fileName)
+	// fileName := "D:/overall/project/api-mock/public/access.0930.log"
+	fileName := "D:/overall/project/api-mock/public/0930/access_0930_ab.log"
+	start(fileName, "access_0930_ab.json")
 }
