@@ -8,16 +8,17 @@ type ParamStruct struct {
 }
 
 type ApiModel struct {
-	Id          uint           `gorm:"column:id;primary_key;AUTO_INCREMENT;NOT NULL"`
-	Name        string         `gorm:"column:name"`
-	Method      string         `gorm:"column:method"`
-	UriArgs     string         `gorm:"column:uri_args"`
-	Uri         string         `gorm:"column:uri"`
-	ContentType string         `gorm:"column:content_type"`
-	Args        string         `gorm:"column:args"`
-	BodyType    uint           `gorm:"column:body_type"`
-	RequestBody string         `gorm:"column:request_body"`
-	Params      []*ParamStruct `gorm:"column:params;serializer:json"`
+	Id                  uint           `gorm:"column:id;primary_key;AUTO_INCREMENT;NOT NULL"`
+	Name                string         `gorm:"column:name"`
+	Method              string         `gorm:"column:method"`
+	UriArgs             string         `gorm:"column:uri_args"`
+	Uri                 string         `gorm:"column:uri"`
+	ContentType         string         `gorm:"column:content_type"`
+	ResponseContentType string         `gorm:"column:response_content_type"`
+	Args                string         `gorm:"column:args"`
+	BodyType            uint           `gorm:"column:body_type"`
+	RequestBody         string         `gorm:"column:request_body"`
+	Params              []*ParamStruct `gorm:"column:params;serializer:json"`
 }
 
 func NewApiModel() *ApiModel {

@@ -15,8 +15,10 @@ import (
 	"gin-init/utils"
 	"io"
 	"log"
+	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -35,6 +37,7 @@ type logLine struct {
 }
 
 type Record struct {
+	Name              string
 	Method            string
 	ReqUriArgs        string
 	Uri               string
@@ -43,6 +46,7 @@ type Record struct {
 	BodyType          uint
 	RequestBody       string
 	RequestBodyParams []*entity.ParamStruct
+	SentContentType   string `json:"sent_content_type"`
 }
 
 // TODO 部分过滤的黑名单
@@ -119,12 +123,18 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 		}
 
 		// TODO 过滤掉静态资源请求, 后续可配置名单
-		if strings.HasSuffix(entry.Uri, ".js") ||
+		if strings.HasSuffix(entry.ReqUriArgs, ".js") ||
 			strings.HasSuffix(entry.Uri, ".png") ||
+			strings.HasSuffix(entry.Uri, ".txt") ||
+			strings.HasSuffix(entry.Uri, ".xlsx") ||
+			strings.HasSuffix(entry.Uri, ".tar") ||
 			strings.Contains(entry.Uri, "favicon.ico") ||
 			strings.HasPrefix(entry.Uri, "/pub") ||
 			strings.Contains(entry.Args, "f=logout") ||
 			strings.HasPrefix(entry.Uri, "/skin") {
+			continue
+		}
+		if !strings.HasSuffix(entry.Uri, ".php") {
 			continue
 		}
 
@@ -141,11 +151,28 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 			entry.RequestBody = ""
 		}
 
+		// 提取 args
+		queryKeys := entry.Args
+		queryMaps, err := url.ParseQuery(entry.Args)
+		if err == nil {
+			mfc := make([]string, 0, len(queryMaps))
+			for k, v := range queryMaps {
+				if k == "m" || k == "f" || k == "c" {
+					sort.Strings(v)
+					mfc = append(mfc, k+"="+strings.Join(v, ","))
+				}
+			}
+			sort.Strings(mfc)
+			queryKeys = strings.Join(mfc, "|")
+		}
+		Name := entry.Method + "-" + entry.Uri + "+" + queryKeys
+
 		// 处理 RequestBody
 		params, bodyType := parseBody(entry.RequestBody)
 
 		//
 		recordItem := &Record{
+			Name:              Name,
 			Method:            entry.Method,
 			ReqUriArgs:        entry.ReqUriArgs,
 			Uri:               entry.Uri,
@@ -154,6 +181,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 			RequestBody:       entry.RequestBody,
 			BodyType:          bodyType,
 			RequestBodyParams: params,
+			SentContentType:   entry.SentContentType,
 		}
 		recordArr = append(recordArr, recordItem)
 	}
