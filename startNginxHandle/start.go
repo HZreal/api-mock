@@ -8,19 +8,25 @@ package main
  */
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"gin-init/database"
 	"gin-init/model/entity"
 	"gin-init/service"
+	"github.com/go-redis/redis/v8"
 	"gorm.io/gorm"
 	"log"
 )
 
-var DB *gorm.DB
+var (
+	DB  *gorm.DB
+	rdb *redis.Client
+)
 
 func init() {
 	DB = database.DB
+	rdb = database.RDB
 }
 
 // importToDb
@@ -28,21 +34,21 @@ func importToDb(logEntries []*service.Record) {
 	for i, line := range logEntries {
 		fmt.Println("i  ---->  ", i)
 
-		// TODO 改为 redis 解决重复性问题
 		var existingApi entity.ApiModel
-		if err := DB.Where("uri_args = ? AND method = ?", line.ReqUriArgs, line.Method).First(&existingApi).Error; err != nil {
+		if err := DB.Where("name = ?", line.Name).First(&existingApi).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				// 记录不存在，创建新记录
 				r := entity.ApiModel{
-					Name:        line.ReqUriArgs,
-					Method:      line.Method,
-					UriArgs:     line.ReqUriArgs,
-					Uri:         line.Uri,
-					ContentType: line.ContentType,
-					Args:        line.Args,
-					BodyType:    line.BodyType,
-					RequestBody: line.RequestBody,
-					Params:      line.RequestBodyParams,
+					Name:                line.Name,
+					Method:              line.Method,
+					UriArgs:             line.ReqUriArgs,
+					Uri:                 line.Uri,
+					ContentType:         line.ContentType,
+					ResponseContentType: line.SentContentType,
+					Args:                line.Args,
+					BodyType:            line.BodyType,
+					RequestBody:         line.RequestBody,
+					Params:              line.RequestBodyParams,
 				}
 				if result := DB.Create(&r); result.Error != nil {
 					log.Printf("Failed to create api, error: %v", result.Error)
@@ -54,12 +60,14 @@ func importToDb(logEntries []*service.Record) {
 				continue
 			}
 		} else {
-			// 记录已存在，执行更新操作
-			existingApi.Name = line.ReqUriArgs
-			existingApi.Method = line.Method
-			existingApi.Uri = line.Uri
-			existingApi.ContentType = line.ContentType
+			// TODO 记录已存在，执行更新操作，合并参数
+			// existingApi.Name = line.ReqUriArgs
+			// existingApi.Method = line.Method
+			// existingApi.Uri = line.Uri
+			// existingApi.UriArgs = line.ReqUriArgs
 			existingApi.Args = line.Args
+			existingApi.ContentType = line.ContentType
+			existingApi.ResponseContentType = line.SentContentType
 			existingApi.BodyType = line.BodyType
 			existingApi.RequestBody = line.RequestBody
 			existingApi.Params = line.RequestBodyParams
@@ -86,6 +94,69 @@ func importToDb(logEntries []*service.Record) {
 		// 	log.Printf("Failed to create api, error: %v", result.Error)
 		// 	continue
 		// }
+
+	}
+}
+
+func importToDb2(logEntries []*service.Record) {
+	for i, line := range logEntries {
+		fmt.Println("i  ---->  ", i)
+
+		// TODO 改为 redis 解决重复性问题
+		// 使用 SADD 添加元素并检查返回值
+		ctx := context.Background()
+		coding := line.Method + "_" + line.ReqUriArgs
+
+		var existingApi entity.ApiModel
+
+		result, err := rdb.SAdd(ctx, "okcc_api_set", coding).Result()
+		if err != nil {
+			log.Printf("Failed to SADD: %v", err)
+			continue
+		}
+
+		if result == 1 {
+			fmt.Println("Element was not present, successfully added.")
+			// 记录不存在，创建新记录
+			r := entity.ApiModel{
+				Name:                coding,
+				Method:              line.Method,
+				UriArgs:             line.ReqUriArgs,
+				Uri:                 line.Uri,
+				ContentType:         line.ContentType,
+				ResponseContentType: line.SentContentType,
+				Args:                line.Args,
+				BodyType:            line.BodyType,
+				RequestBody:         line.RequestBody,
+				Params:              line.RequestBodyParams,
+			}
+			if result2 := DB.Create(&r); result2.Error != nil {
+				log.Printf("Failed to create api, error: %v", result2.Error)
+				continue
+			}
+		} else if result == 0 {
+			fmt.Println("Element already exists, no need to add.")
+			if err := DB.Where("name = ?", coding).First(&existingApi).Error; err != nil {
+				log.Printf("Failed to query api, error: %v", err)
+				continue
+			}
+
+			// 记录已存在，执行更新操作
+			// existingApi.Name = line.ReqUriArgs
+			// existingApi.Method = line.Method
+			// existingApi.UriArgs = line.ReqUriArgs
+			// existingApi.Uri = line.Uri
+			existingApi.ContentType = line.ContentType
+			existingApi.Args = line.Args
+			existingApi.BodyType = line.BodyType
+			existingApi.RequestBody = line.RequestBody
+			existingApi.Params = line.RequestBodyParams
+
+			if result2 := DB.Save(&existingApi); result2.Error != nil {
+				log.Printf("Failed to update api, error: %v", result2.Error)
+				continue
+			}
+		}
 
 	}
 }
