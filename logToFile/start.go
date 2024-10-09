@@ -10,7 +10,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"gin-init/logToFile/relat"
+	"gin-init/model/entity"
 	"gin-init/service"
+	"github.com/google/uuid"
+	"log"
 	"net/url"
 	"os"
 	"strconv"
@@ -18,15 +22,29 @@ import (
 	"time"
 )
 
+var (
+	batchSize = 1000
+)
+
 type PostmanCollection struct {
 	Info Info   `json:"info"`
 	Item []Item `json:"item"`
+}
+
+type PostmanCollection2 struct {
+	Info Info      `json:"info"`
+	Item []ItemDir `json:"item"`
 }
 
 type Info struct {
 	PostmanID string `json:"_postman_id"`
 	Name      string `json:"name"`
 	Schema    string `json:"schema"`
+}
+
+type ItemDir struct {
+	Name string `json:"name"`
+	Item []Item `json:"item"`
 }
 
 type Item struct {
@@ -280,7 +298,7 @@ func doTest() {
 	fmt.Println("Postman collection saved to postman_collection_test.json")
 }
 
-func parseUrlencodeArgs(args string) []KVItem {
+func parseUrlencodedArgs(args string) []KVItem {
 	values, err := url.ParseQuery(args)
 	if err != nil {
 		return []KVItem{}
@@ -295,10 +313,6 @@ func parseUrlencodeArgs(args string) []KVItem {
 	}
 
 	return queries
-}
-
-func judgeDuplicated() {
-
 }
 
 func start(fileName string, collectionName string) {
@@ -322,20 +336,20 @@ func start(fileName string, collectionName string) {
 		path := strings.Split(line.Uri, "/")
 
 		//
-		query := parseUrlencodeArgs(line.Args)
+		query := parseUrlencodedArgs(line.Args)
 
 		//
 		body := Body{}
 		testEvent := Event{
 			Listen: "test",
 			Script: Script{
-				Exec: responseAssertScript,
+				Exec: relat.ResponseAssertScript,
 				Type: "text/javascript",
 			},
 		}
 		var events []Event
 		if strings.Contains(line.Args, "m=login") {
-			testEvent.Script.Exec = loginExecScript
+			testEvent.Script.Exec = relat.LoginExecScript
 		}
 		events = append(events, testEvent)
 
@@ -360,14 +374,14 @@ func start(fileName string, collectionName string) {
 				prerequestEvent := Event{
 					Listen: "prerequest",
 					Script: Script{
-						Exec: pprerequestScript,
+						Exec: relat.PprerequestScript,
 						Type: "text/javascript",
 					},
 				}
 				events = append(events, prerequestEvent)
 			} else if line.BodyType == 3 {
 				// a=1&b=2
-				body.Urlencoded = parseUrlencodeArgs(line.RequestBody)
+				body.Urlencoded = parseUrlencodedArgs(line.RequestBody)
 			}
 		} else {
 			body.Mode = "none"
@@ -432,10 +446,172 @@ func start(fileName string, collectionName string) {
 	fmt.Println("Postman collection saved to postman_collection.json")
 }
 
+func exportCollection(timestamp string) *PostmanCollection2 {
+	// 创建 Collection
+	collection := &PostmanCollection2{
+		Info: Info{
+			PostmanID: uuid.New().String(),
+			Name:      "OKCC-Collection-" + timestamp,
+			Schema:    "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		},
+	}
+
+	var lastID uint = 0
+	for {
+		var apiRecords []entity.ApiModel
+		// 使用选择特定字段
+		result := relat.DB.Where("id > ?", lastID).Order("id").Limit(batchSize).Find(&apiRecords)
+		if result.Error != nil {
+			log.Fatalf("failed to retrieve apiRecords: %v", result.Error)
+		}
+
+		if len(apiRecords) == 0 {
+			break // 没有更多数据
+		}
+
+		var itemDir = ItemDir{
+			Name: "dir_" + strconv.Itoa(int(lastID)),
+		}
+
+		// 处理用户数据
+		for _, line := range apiRecords {
+
+			//
+			path := strings.Split(line.Uri, "/")
+
+			//
+			query := parseUrlencodedArgs(line.Args)
+
+			//
+			body := Body{}
+			testEvent := Event{
+				Listen: "test",
+				Script: Script{
+					Exec: relat.ResponseAssertScript,
+					Type: "text/javascript",
+				},
+			}
+			var events []Event
+			if strings.Contains(line.Args, "m=login") {
+				testEvent.Script.Exec = relat.LoginExecScript
+			}
+			events = append(events, testEvent)
+
+			if line.ContentType == "application/json" {
+				// 几乎没有这种情况
+				body.Mode = "raw"
+				body.Raw = line.RequestBody
+				body.Options = &BodyOptions{
+					Raw: RawLanguage{
+						Language: "json",
+					},
+				}
+			} else if line.ContentType == "application/x-www-form-urlencoded" {
+				// 主要是这种情况
+				body.Mode = "urlencoded"
+
+				if line.BodyType == 2 {
+					// p=
+					body.Urlencoded = []KVItem{
+						{Key: "p", Value: "{\"pagination\":{\"current\":1,\"pageSize\":10},\"sorter\":{},\"filter\":{}}"},
+					}
+					prerequestEvent := Event{
+						Listen: "prerequest",
+						Script: Script{
+							Exec: relat.PprerequestScript,
+							Type: "text/javascript",
+						},
+					}
+					events = append(events, prerequestEvent)
+				} else if line.BodyType == 3 {
+					// a=1&b=2
+					body.Urlencoded = parseUrlencodedArgs(line.RequestBody)
+				}
+			} else {
+				body.Mode = "none"
+				body.Raw = ``
+			}
+
+			//
+			requestItem := Item{
+				Name: line.UriArgs,
+				Request: Request{
+					Method: line.Method,
+					Header: []KVItem{
+						// {
+						// 	Key:   "X-Requested-With",
+						// 	Value: "XMLHttpRequest",
+						// },
+						{
+							Key:   "Cookie",
+							Value: "srv_session_id={{srv_session_id}}; PHPSESSID={{PHPSESSID}}; rememberMe={{rememberMe}}; customerName={{customerName}}; userName={{userName}}",
+						},
+						{
+							Key:   "Content-Type",
+							Value: line.ContentType,
+						},
+					},
+					URL: URL{
+						Raw: "{{url}}" + line.UriArgs,
+						Host: []string{
+							"{{url}}",
+						},
+						Path:  path,
+						Query: query,
+					},
+					Body: body,
+				},
+				Response: []string{},
+				Event:    events,
+			}
+
+			//
+			itemDir.Item = append(itemDir.Item, requestItem)
+		}
+
+		lastID = apiRecords[len(apiRecords)-1].Id
+
+		//
+		collection.Item = append(collection.Item, itemDir)
+	}
+
+	return collection
+}
+
+func start2() {
+	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+	collection := exportCollection(timestamp)
+
+	storeDir := "public/"
+	fileName := fmt.Sprintf("postman_collection_%s.json", timestamp)
+
+	//
+	file, err := os.Create(storeDir + fileName)
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	encoder.SetEscapeHTML(false) // 禁用 HTML 转义
+
+	err = encoder.Encode(collection)
+	if err != nil {
+		fmt.Println("Error encoding JSON to file:", err)
+		return
+	}
+
+	fmt.Println("Postman collection saved to xxx.json")
+}
+
 func main() {
 	// doTest()
 
 	// fileName := "D:/overall/project/api-mock/public/access.0930.log"
-	fileName := "D:/overall/project/api-mock/public/0930/access_0930_ab.log"
-	start(fileName, "access_0930_ab.json")
+	// fileName := "D:/overall/project/api-mock/public/0930/access_0930_ab.log"
+	// start(fileName, "access_0930_ab.json")
+
+	start2()
 }
