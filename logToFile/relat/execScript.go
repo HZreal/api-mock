@@ -8,6 +8,7 @@ package relat
  */
 
 var (
+	// 登录后置脚本
 	LoginExecScript = []string{
 		"// 提取响应中的 Cookies\r",
 		"let cookies = pm.cookies;\r",
@@ -31,6 +32,7 @@ var (
 		"}\r",
 	}
 
+	// 接口后置脚本 - 响应脚本
 	ResponseAssertScript = []string{
 		"pm.test(\"msg:成功，错误：0，响应码：200\", function () {\r",
 		"    var jsonData = pm.response.json();\r",
@@ -40,6 +42,7 @@ var (
 		"});\r",
 	}
 
+	// 分页前置脚本
 	PprerequestScript = []string{
 		"// 生成 1 到 10000 的随机页码\r",
 		"let currentPage = Math.floor(Math.random() * 10000) + 1; // 生成 1 到 10000 之间的正整数\r",

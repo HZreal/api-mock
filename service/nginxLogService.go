@@ -67,7 +67,6 @@ func unescapeRequestBody(input string) string {
 	return input
 }
 
-// unescapeHex
 // 处理转义
 func unescapeHex(s string) (string, error) {
 	re := regexp.MustCompile(`\\x([0-9A-Fa-f]{2})`)
@@ -83,6 +82,47 @@ func unescapeHex(s string) (string, error) {
 	return fixed, nil
 }
 
+func unescapeHex2(s string) (string, error) {
+	// 1. 处理双引号的转义
+	s = strings.ReplaceAll(s, `\"`, `"`)
+
+	// 2. 处理十六进制转义字符
+	re := regexp.MustCompile(`\\x([0-9A-Fa-f]{2})`)
+	fixed := re.ReplaceAllStringFunc(s, func(match string) string {
+		hex := match[2:]
+		b, err := strconv.ParseUint(hex, 16, 8)
+		if err != nil {
+			return match // 保留原始字符串
+		}
+		return string(rune(b)) // 直接返回对应的字符
+	})
+
+	// 3. 处理其他常见转义字符
+	replacer := strings.NewReplacer(
+		`\\`, `\`,
+		`\r`, "\r",
+		`\n`, "\n",
+		`\t`, "\t",
+	)
+	fixed = replacer.Replace(fixed)
+
+	return fixed, nil
+}
+
+func preprocessLine(line string) (string, error) {
+	// 匹配 \x 后跟两个十六进制字符的模式
+	re := regexp.MustCompile(`\\x[0-9A-Fa-f]{2}`)
+
+	// 将匹配到的 \xHH 转换为对应的 Unicode 转义字符 \u00HH
+	processedLine := re.ReplaceAllStringFunc(line, func(match string) string {
+		// 提取十六进制部分
+		hexValue := match[2:]
+		return fmt.Sprintf("\\u00%s", hexValue)
+	})
+
+	return processedLine, nil
+}
+
 // ReadAndParseLogFile
 func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 	//
@@ -96,7 +136,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 	defer openFile.Close()
 
 	//
-	reader := bufio.NewReader(openFile)
+	reader := bufio.NewReaderSize(openFile, 16*1024)
 	for {
 		line, _, err2 := reader.ReadLine()
 		if err2 == io.EOF {
@@ -108,8 +148,9 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 
 		strLine := string(line)
 
-		// 全局替换非法转义字符，确保 JSON 可以解析
-		fixedLine, err3 := unescapeHex(strLine)
+		// 全局替换转义字符，确保 JSON 可以解析
+		fixedLine, err3 := preprocessLine(strLine)
+		// fixedLine, err3 := strconv.Unquote(`"` + strLine + `"`)
 		if err3 != nil {
 			log.Printf("修复转义序列失败: %v\n内容: %s", err3, strLine)
 			continue
@@ -137,8 +178,6 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 		if !strings.HasSuffix(entry.Uri, ".php") {
 			continue
 		}
-
-		// TODO 重复问题，更新
 
 		// 处理空值
 		if entry.ContentType == "-" {
@@ -168,7 +207,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 		Name := entry.Method + "-" + entry.Uri + "+" + queryKeys
 
 		// 处理 RequestBody
-		params, bodyType := parseBody(entry.RequestBody)
+		params, bodyType := parseBody(entry.RequestBody, entry.ContentType)
 
 		//
 		recordItem := &Record{
@@ -189,7 +228,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 }
 
 // 处理 body
-func parseBody(lineBody string) (params []*entity.ParamStruct, bodyType uint) {
+func parseBody(lineBody string, contentType string) (params []*entity.ParamStruct, bodyType uint) {
 	var body map[string]interface{}
 
 	// TODO 改成策略的形式 类似 map 包含 条件、处理函数
@@ -225,16 +264,23 @@ func parseBody(lineBody string) (params []*entity.ParamStruct, bodyType uint) {
 	// 	}
 	// }
 
+	// body 是否匹配的标记
+	var matchFlag = false
 	for _, handlerItem := range Handlers {
-		if handlerItem.Condition(lineBody) {
+		if handlerItem.Condition(lineBody, contentType) {
 			var err error
-			body, err = handlerItem.BodyHandle(lineBody)
+			body, err = handlerItem.BodyHandle(lineBody, contentType)
 			if err != nil {
 				fmt.Println("error in BodyHandle", lineBody)
+				break
 			}
 			bodyType = handlerItem.GetBodyType()
+			matchFlag = true
 			break
 		}
+	}
+	if !matchFlag {
+		log.Printf("Not match Flag Handlers ---->  %s", lineBody)
 	}
 
 	// TODO 扁平化操作

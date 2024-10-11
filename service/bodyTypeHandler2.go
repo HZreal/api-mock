@@ -8,15 +8,20 @@ package service
  */
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime"
+	"mime/multipart"
 	"net/url"
 	"regexp"
+	"strings"
 )
 
 type HandleWayInterface interface {
-	Condition(s string) bool
-	BodyHandle(s string) (map[string]interface{}, error)
+	Condition(bodyString string, contentType string) bool
+	BodyHandle(bodyString string, contentType string) (map[string]interface{}, error)
 	GetBodyType() uint
 }
 
@@ -28,29 +33,31 @@ func (b *BaseBody) GetBodyType() uint {
 	return b.BodyType
 }
 
-type BodyEmpty struct {
+// /////////////////////////////////
+type UrlencodedBodyEmpty struct {
 	*BaseBody
 }
 
-func (p *BodyEmpty) Condition(s string) bool {
-	return s == ""
+func (p *UrlencodedBodyEmpty) Condition(bodyString string, contentType string) bool {
+	return contentType == "application/x-www-form-urlencoded" && bodyString == ""
 }
 
-func (p *BodyEmpty) BodyHandle(s string) (map[string]interface{}, error) {
+func (p *UrlencodedBodyEmpty) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
 	return make(map[string]interface{}), nil
 }
 
-type BodyPString struct {
+// /////////////////////////////////
+type UrlencodedBodyPString struct {
 	*BaseBody
 }
 
-func (p *BodyPString) Condition(s string) bool {
-	return regexp.MustCompile(`^p=`).MatchString(s)
+func (p *UrlencodedBodyPString) Condition(bodyString string, contentType string) bool {
+	return contentType == "application/x-www-form-urlencoded" && regexp.MustCompile(`^p=`).MatchString(bodyString)
 }
 
-func (p *BodyPString) BodyHandle(s string) (map[string]interface{}, error) {
+func (p *UrlencodedBodyPString) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
 	// 第一步：解析 URL-编码的表单数据
-	values, err := url.ParseQuery(s)
+	values, err := url.ParseQuery(bodyString)
 	if err != nil {
 		return nil, fmt.Errorf("解析 URL 查询参数失败: %w", err)
 	}
@@ -82,16 +89,17 @@ func (p *BodyPString) BodyHandle(s string) (map[string]interface{}, error) {
 	return parsedData, nil
 }
 
-type BodyFormUrlEncoded struct {
+// /////////////////////////////////
+type UrlencodedBodyFormUrlEncoded struct {
 	*BaseBody
 }
 
-func (p *BodyFormUrlEncoded) Condition(s string) bool {
-	return regexp.MustCompile(`^([a-zA-Z0-9_%+-]+=[^&]*)+(&[a-zA-Z0-9_%+-]+=[^&]*)*$`).MatchString(s)
+func (p *UrlencodedBodyFormUrlEncoded) Condition(bodyString string, contentType string) bool {
+	return contentType == "application/x-www-form-urlencoded" && regexp.MustCompile(`^([a-zA-Z0-9_%+-]+=[^&]*)+(&[a-zA-Z0-9_%+-]+=[^&]*)*$`).MatchString(bodyString)
 }
 
-func (p *BodyFormUrlEncoded) BodyHandle(s string) (map[string]interface{}, error) {
-	values, err := url.ParseQuery(s)
+func (p *UrlencodedBodyFormUrlEncoded) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
+	values, err := url.ParseQuery(bodyString)
 	if err != nil {
 		return nil, fmt.Errorf("解析 URL 查询参数失败: %v", err)
 	}
@@ -106,23 +114,109 @@ func (p *BodyFormUrlEncoded) BodyHandle(s string) (map[string]interface{}, error
 	return result, nil
 }
 
-type BodyJson struct {
+// /////////////////////////////////
+type UrlencodedBodyJson struct {
 	*BaseBody
 }
 
-func (p *BodyJson) Condition(s string) bool {
-	return json.Valid([]byte(s))
+func (p *UrlencodedBodyJson) Condition(bodyString string, contentType string) bool {
+	return contentType == "application/x-www-form-urlencoded" && json.Valid([]byte(bodyString))
 }
 
-func (p *BodyJson) BodyHandle(s string) (map[string]interface{}, error) {
+func (p *UrlencodedBodyJson) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
 	var body map[string]interface{}
-	_ = json.Unmarshal([]byte(s), &body)
+	_ = json.Unmarshal([]byte(bodyString), &body)
 	return body, nil
 }
 
+// /////////////////////////////////
+type FormDataEmptyBody struct {
+	*BaseBody
+}
+
+func (p *FormDataEmptyBody) Condition(bodyString string, contentType string) bool {
+	return strings.Contains(contentType, "multipart/form-data") && bodyString == ""
+}
+
+func (p *FormDataEmptyBody) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
+	return make(map[string]interface{}), nil
+}
+
+// /////////////////////////////////
+type FormDataBody struct {
+	*BaseBody
+}
+
+func (p *FormDataBody) Condition(bodyString string, contentType string) bool {
+	return strings.Contains(contentType, "multipart/form-data") && bodyString != ""
+}
+
+func (p *FormDataBody) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
+	result := make(map[string]interface{})
+
+	// 解析Content-Type获取boundary
+	_, params, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return nil, fmt.Errorf("解析Content-Type失败: %v", err)
+	}
+	boundary := params["boundary"]
+
+	// 创建multipart reader
+	reader := multipart.NewReader(strings.NewReader(bodyString), boundary)
+
+	// 读取每个部分
+	for {
+		part, err := reader.NextPart()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("读取part失败: %v", err)
+		}
+
+		// 读取part的内容
+		buf := new(bytes.Buffer)
+		_, err = buf.ReadFrom(part)
+		if err != nil {
+			return nil, fmt.Errorf("读取part内容失败: %v", err)
+		}
+
+		content := buf.String()
+
+		// 如果有文件名，则这是一个文件上传字段
+		if part.FileName() != "" {
+			// TODO 文件字段的处理
+			// part.Header.Get("Content-Type")
+			// part.FileName()
+			content = "this is binary data, xxxxxxxxxxxxxxxxxxxx"
+		}
+
+		// 将字段信息添加到结果map
+		result[part.FormName()] = content
+	}
+
+	return result, nil
+}
+
+// /////////////////////////////////
+type EmptyContentTypeBody struct {
+	*BaseBody
+}
+
+func (p *EmptyContentTypeBody) Condition(bodyString string, contentType string) bool {
+	return contentType == "" && bodyString == ""
+}
+
+func (p *EmptyContentTypeBody) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
+	return make(map[string]interface{}), nil
+}
+
 var Handlers = []HandleWayInterface{
-	&BodyEmpty{BaseBody: &BaseBody{BodyType: 1}},
-	&BodyPString{BaseBody: &BaseBody{BodyType: 2}},
-	&BodyFormUrlEncoded{BaseBody: &BaseBody{BodyType: 3}},
-	&BodyJson{BaseBody: &BaseBody{BodyType: 4}},
+	&EmptyContentTypeBody{BaseBody: &BaseBody{BodyType: 6}},
+	&UrlencodedBodyEmpty{BaseBody: &BaseBody{BodyType: 1}},
+	&UrlencodedBodyPString{BaseBody: &BaseBody{BodyType: 2}},
+	&UrlencodedBodyFormUrlEncoded{BaseBody: &BaseBody{BodyType: 3}},
+	&UrlencodedBodyJson{BaseBody: &BaseBody{BodyType: 4}},
+	&FormDataEmptyBody{BaseBody: &BaseBody{BodyType: 7}},
+	&FormDataBody{BaseBody: &BaseBody{BodyType: 5}},
 }

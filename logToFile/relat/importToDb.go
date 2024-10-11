@@ -62,8 +62,6 @@ func importToDb(logEntries []*service.Record) {
 			// existingApi.Uri = line.Uri
 			// existingApi.UriArgs = line.ReqUriArgs
 			existingApi.Args = line.Args
-			existingApi.ContentType = line.ContentType
-			existingApi.ResponseContentType = line.SentContentType
 			existingApi.BodyType = line.BodyType
 			existingApi.RequestBody = line.RequestBody
 			existingApi.Params = line.RequestBodyParams
@@ -77,8 +75,8 @@ func importToDb(logEntries []*service.Record) {
 	}
 }
 
-// parseAndImport)
-func parseAndImport(filePath string) {
+// ParseAndImport 解析并导入
+func ParseAndImport(filePath string) {
 	logEntries, err := service.ReadAndParseLogFile(filePath)
 	if err != nil {
 		return
@@ -99,5 +97,5 @@ func main() {
 	// fmt.Println("filePath  ---->  ", *filePath)
 
 	//
-	parseAndImport(filePath)
+	ParseAndImport(filePath)
 }
