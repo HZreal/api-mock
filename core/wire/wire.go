@@ -8,6 +8,7 @@ import (
 	"gin-init/model/entity"
 	"gin-init/mq/rabbitMQ"
 	"gin-init/service"
+	"gin-init/service/common"
 	"github.com/google/wire"
 )
 
@@ -28,6 +29,7 @@ var UserSet = wire.NewSet(
 	controller.NewUserController,
 	service.NewUserService,
 	entity.NewUserModel,
+	common.NewRedisService,
 )
 
 var ApiSet = wire.NewSet(

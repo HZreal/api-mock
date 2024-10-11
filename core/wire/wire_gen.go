@@ -11,6 +11,7 @@ import (
 	"gin-init/model/entity"
 	"gin-init/mq/rabbitMQ"
 	"gin-init/service"
+	"gin-init/service/common"
 	"github.com/google/wire"
 )
 
@@ -22,7 +23,8 @@ func InitializeApp() (*AppControllers, error) {
 	demoService := service.NewDemoService(rabbitMQService)
 	demoController := controller.NewDemoController(demoService)
 	userModel := entity.NewUserModel()
-	userService := service.NewUserService(userModel)
+	redisService := common.NewRedisService()
+	userService := service.NewUserService(userModel, redisService)
 	sysService := service.NewSysService(userService)
 	sysController := controller.NewSysController(sysService)
 	userController := controller.NewUserController(userService)
@@ -52,7 +54,7 @@ var DemoSet = wire.NewSet(controller.NewDemoController, service.NewDemoService, 
 
 var SysSet = wire.NewSet(controller.NewSysController, service.NewSysService)
 
-var UserSet = wire.NewSet(controller.NewUserController, service.NewUserService, entity.NewUserModel)
+var UserSet = wire.NewSet(controller.NewUserController, service.NewUserService, entity.NewUserModel, common.NewRedisService)
 
 var ApiSet = wire.NewSet(controller.NewApiController, service.NewApiService, entity.NewApiModel)
 

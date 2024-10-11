@@ -3,9 +3,11 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"gin-init/database"
 	"gin-init/model/dto"
 	"gin-init/model/entity"
 	"gin-init/model/vo"
+	"gin-init/service/common"
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
 	"log"
@@ -13,17 +15,20 @@ import (
 )
 
 type UserService struct {
-	UserModel *entity.UserModel
-	// RedisService *RedisService // TODO 封装
+	UserModel    *entity.UserModel
+	RedisService *common.RedisService // TODO 封装
 }
 
-func NewUserService(userModel *entity.UserModel) *UserService {
-	return &UserService{UserModel: userModel}
+func NewUserService(userModel *entity.UserModel, redisService *common.RedisService) *UserService {
+	return &UserService{
+		UserModel:    userModel,
+		RedisService: redisService,
+	}
 }
 
 func (uS *UserService) GetAllUser(c *gin.Context, body dto.UsersFilterDTO) []vo.UserDetailInfo {
 	var users []vo.UserDetailInfo
-	if err := db.Model(uS.UserModel).Where(body).Find(&users).Error; err != nil {
+	if err := database.DB.Model(uS.UserModel).Where(body).Find(&users).Error; err != nil {
 		log.Printf("query users err:%v", err)
 		panic(err)
 	}
@@ -41,9 +46,9 @@ func (uS *UserService) GetUserList(c *gin.Context, query dto.QueryPagination, bo
 	offset := (page - 1) * pageSize
 
 	// 获取数据总数和分页数据
-	// db.Model(&entity.UserModel{}).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&userInfos)
+	// database.DB.Model(&entity.UserModel{}).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&userInfos)
 	// TODO 通过依赖注入
-	db.Model(uS.UserModel).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&userInfos)
+	database.DB.Model(uS.UserModel).Where(body).Count(&total).Offset(offset).Limit(pageSize).Find(&userInfos)
 
 	// 计算总页数
 	pages := int(total) / pageSize
@@ -64,10 +69,10 @@ func (uS *UserService) GetUserList(c *gin.Context, query dto.QueryPagination, bo
 func (uS *UserService) GetUserDetail(c *gin.Context, id int) (userInfo vo.UserDetailInfo) {
 	//
 	key := fmt.Sprintf("tmp:user:id:%d", id)
-	cachedData, err := rdb.Get(c, key).Result()
+	cachedData, err := uS.RedisService.Client.Get(c, key).Result()
 	if err == redis.Nil {
 		// 无缓存
-		affected := db.Take(&entity.UserModel{}, id).Scan(&userInfo).RowsAffected
+		affected := database.DB.Take(&entity.UserModel{}, id).Scan(&userInfo).RowsAffected
 		if affected == 0 {
 			log.Printf("No user found with ID: %d", id)
 			return
@@ -81,7 +86,7 @@ func (uS *UserService) GetUserDetail(c *gin.Context, id int) (userInfo vo.UserDe
 		}
 
 		// 将数据缓存到 Redis，设置缓存过期时间为 30 S
-		err = rdb.Set(c, key, unitInfoJson, 30*time.Second).Err()
+		err = uS.RedisService.Client.Set(c, key, unitInfoJson, 30*time.Second).Err()
 		if err != nil {
 			panic("failed to save data")
 		}
@@ -122,7 +127,7 @@ func (uS *UserService) CreateUser(c *gin.Context, body dto.UserCreateDTO) vo.Use
 		Age:      body.Age,
 	}
 
-	if result := db.Create(&user); result.Error != nil {
+	if result := database.DB.Create(&user); result.Error != nil {
 		log.Printf("Failed to create user, error: %v", result.Error)
 		panic("failed to create user")
 	}
@@ -138,13 +143,13 @@ func (uS *UserService) CreateUser(c *gin.Context, body dto.UserCreateDTO) vo.Use
 func (uS *UserService) UpdateUser(c *gin.Context, body dto.UserUpdateDTO) vo.UserDetailInfo {
 	id := body.Id
 	var user entity.UserModel
-	if result := db.First(&user, id); result.Error != nil {
+	if result := database.DB.First(&user, id); result.Error != nil {
 		log.Printf("Failed to find user, error: %v", result.Error)
 		panic("failed to find user")
 	}
 
 	//
-	result := db.Model(&user).Where("id = ?", id).Updates(body)
+	result := database.DB.Model(&user).Where("id = ?", id).Updates(body)
 	if result.Error != nil {
 		log.Printf("Failed to update user, error: %v", result.Error)
 		panic("failed to update user")
@@ -158,13 +163,13 @@ func (uS *UserService) UpdateUser(c *gin.Context, body dto.UserUpdateDTO) vo.Use
 }
 
 func (uS *UserService) DeleteUser(c *gin.Context, id int) {
-	if result := db.First(uS.UserModel, id); result.Error != nil {
+	if result := database.DB.First(uS.UserModel, id); result.Error != nil {
 		log.Printf("Failed to find user, error: %v", result.Error)
 		panic("failed to find user")
 	}
 
 	//
-	result := db.Delete(uS.UserModel, id)
+	result := database.DB.Delete(uS.UserModel, id)
 	if result.Error != nil {
 		log.Printf("Failed to delete user, error: %v", result.Error)
 		panic("failed to delete user")
