@@ -9,6 +9,7 @@ package service
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"gin-init/model/entity"
@@ -123,6 +124,22 @@ func preprocessLine(line string) (string, error) {
 	return processedLine, nil
 }
 
+func unescapeLog(input string) (string, error) {
+	// 将 \xXX 转换为对应字符
+	re := regexp.MustCompile(`\\x([0-9A-Fa-f]{2})`)
+	result := re.ReplaceAllStringFunc(input, func(s string) string {
+		var b byte
+		fmt.Sscanf(s[2:], "%X", &b)
+		return string(b)
+	})
+
+	// 处理其他转义字符
+	result = string(bytes.ReplaceAll([]byte(result), []byte(`\"`), []byte(`"`)))
+	result = string(bytes.ReplaceAll([]byte(result), []byte(`\\`), []byte(`\`)))
+
+	return result, nil
+}
+
 // ReadAndParseLogFile
 func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 	//
@@ -150,6 +167,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 
 		// 全局替换转义字符，确保 JSON 可以解析
 		fixedLine, err3 := preprocessLine(strLine)
+		// fixedLine, err3 := unescapeLog(strLine)
 		// fixedLine, err3 := strconv.Unquote(`"` + strLine + `"`)
 		if err3 != nil {
 			log.Printf("修复转义序列失败: %v\n内容: %s", err3, strLine)
