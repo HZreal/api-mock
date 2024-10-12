@@ -1,0 +1,19 @@
+mysql:
+  host: 127.0.0.1
+  port: 53306
+  dbname: api_mock
+  # 数据库登录用户
+  username: root
+  # 数据库密码
+  password: root123456
+  # 数据库名字
+  timeout: 10s
+  maxConn: 200
+  maxOpen: 200
+
+logToFile:
+  logSourcePath: D:/overall/project/api-mock/public/access.1010.log
+  collectionStoreDir: public/collection
+
+
+
