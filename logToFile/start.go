@@ -14,6 +14,7 @@ import (
 	"gin-init/logToFile/relat"
 	"gin-init/model/entity"
 	"gin-init/service"
+	"gin-init/utils"
 	"github.com/google/uuid"
 	"log"
 	"net/url"
@@ -24,15 +25,13 @@ import (
 	"time"
 )
 
-var (
-	batchSize = 1000
-)
-
+// PostmanCollection 不包含目录的，简单枚举
 type PostmanCollection struct {
 	Info Info   `json:"info"`
 	Item []Item `json:"item"`
 }
 
+// PostmanCollection2 包含目录的
 type PostmanCollection2 struct {
 	Info Info      `json:"info"`
 	Item []ItemDir `json:"item"`
@@ -319,7 +318,7 @@ func parseUrlencodedArgs(args string) []KVItem {
 	return queries
 }
 
-func start(fileName string, collectionName string) {
+func start1(fileName string, collectionName string) {
 	// 创建 Postman Collection
 	collection := PostmanCollection{
 		Info: Info{
@@ -455,7 +454,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 	collection := &PostmanCollection2{
 		Info: Info{
 			PostmanID: uuid.New().String(),
-			Name:      "OKCC-Collection-" + timestamp,
+			Name:      config.Conf.LogToFile.CollectionNamePrefix + timestamp,
 			Schema:    "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		},
 	}
@@ -464,7 +463,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 	for {
 		var apiRecords []entity.ApiModel
 		// 使用选择特定字段
-		result := relat.DB.Where("id > ?", lastID).Order("id").Limit(batchSize).Find(&apiRecords)
+		result := relat.DB.Where("id > ?", lastID).Order("id").Limit(config.Conf.LogToFile.BatchSize).Find(&apiRecords)
 		if result.Error != nil {
 			log.Fatalf("failed to retrieve apiRecords: %v", result.Error)
 		}
@@ -474,7 +473,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 		}
 
 		var itemDir = ItemDir{
-			Name: "dir_" + strconv.Itoa(int(lastID)),
+			Name: config.Conf.LogToFile.CollectionDirNamePrefix + strconv.Itoa(int(lastID)),
 		}
 
 		// 处理用户数据
@@ -592,13 +591,24 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 	return collection
 }
 
-func start2() {
+func dbToJsonFile() {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	collection := exportCollection(timestamp)
 
-	collectionStoreDir := config.Conf.LogToFile.CollectionStoreDir
-	fileName := fmt.Sprintf("postman_collection_%s.json", timestamp)
-	file, err := os.Create(filepath.Join(collectionStoreDir, fileName))
+	//
+	CollectionStoreDir := config.Conf.LogToFile.CollectionStoreDir
+	if !utils.IsExist(CollectionStoreDir) {
+		err := os.MkdirAll(CollectionStoreDir, os.ModePerm) // 递归创建目录
+		if err != nil {
+			fmt.Println("Error creating directory:", err)
+			return
+		}
+	}
+	storePath := filepath.Join(
+		CollectionStoreDir,
+		fmt.Sprintf("postman_collection_%s.json", timestamp),
+	)
+	file, err := os.Create(storePath)
 	if err != nil {
 		fmt.Println("Error creating file:", err)
 		return
@@ -615,7 +625,7 @@ func start2() {
 		return
 	}
 
-	fmt.Println("Postman collection saved to xxx.json")
+	fmt.Printf("Postman collection saved to %s", storePath)
 }
 
 func nginxLogToDb() {
@@ -628,21 +638,27 @@ func nginxLogToDb() {
 	// 	os.Exit(1)
 	// }
 	// fmt.Println("filePath  ---->  ", *filePath)
+	// relat.ParseAndImport(filePath)
 
 	//
-	// relat.ParseAndImport(filePath)
 	relat.ParseAndImport(config.Conf.LogToFile.LogSourcePath)
 }
 
+func start2() {
+	// nginxLogToDb()
+
+	//
+	dbToJsonFile()
+}
+
 func main() {
+	//
 	// doTest()
 
 	// fileName := "D:/overall/project/api-mock/public/access.1010.log"
 	// fileName := "D:/overall/project/api-mock/public/0930/access_0930_ab.log"
-	// start(fileName, "access_0930_ab.json")
+	// start1(fileName, "access_0930_ab.json")
 
 	//
-	// nginxLogToDb()
-
 	start2()
 }

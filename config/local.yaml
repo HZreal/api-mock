@@ -19,6 +19,11 @@ mysql:
 logToFile:
   logSourcePath: D:/overall/project/api-mock/public/access.1010.log
 
+  collectionStoreDir: public/collection
+  collectionNamePrefix: OKCC-Collection-
+  batchSize: 1000
+  collectionDirNamePrefix: dir_
+
 redis:
   host: 127.0.0.1
   port: 56378

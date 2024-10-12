@@ -13,7 +13,10 @@ mysql:
 
 logToFile:
   logSourcePath: D:/overall/project/api-mock/public/access.1010.log
-  collectionStoreDir: public/collection
 
+  collectionStoreDir: public/collection
+  collectionNamePrefix: OKCC-Collection-
+  batchSize: 1000
+  collectionDirNamePrefix: dir_
 
 

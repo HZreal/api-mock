@@ -8,6 +8,11 @@ package config
  */
 
 type LogToFileConfig struct {
-	LogSourcePath      string `yaml:"logSourcePath"`
-	CollectionStoreDir string `yaml:"collectionStoreDir"`
+	LogSourcePath string `yaml:"logSourcePath"`
+
+	//
+	CollectionStoreDir      string `yaml:"collectionStoreDir"`
+	CollectionNamePrefix    string `yaml:"collectionNamePrefix"`
+	BatchSize               int    `yaml:"batchSize"`
+	CollectionDirNamePrefix string `yaml:"collectionDirNamePrefix"`
 }
