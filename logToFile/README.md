@@ -9,34 +9,47 @@
         go build -o .\logToFile\start.exe .\logToFile\start.go
     
     linux:
-        set GOOS=linux
-        set GOARCH=amd64
-        go build -o .\logToFile\start .\logToFile\start.go
+        cmd
+            set GOOS=linux
+            set GOARCH=amd64
+            go build -o .\logToFile\start .\logToFile\start.go
+        powershell
+            $env:GOOS="linux"
+            $env:GOARCH="amd64"
 
 ```
 
 ## migrate
 
 打 zip 包，为 api_mock.zip
-只需要 config 目录和 start.exe 就行
+只需要 config 目录和 start 可执行程序就行
+后续只需要更新可执行程序
 
 
 ## start
 
-解压到 api_mock 文件夹
+进入 /root/api_mock，解压到当前文件夹
 ```shell
-    unzip -d /path/to/api_mock api_mock.zip
+    unzip api_mock.zip
 ```
 
 
-检查配置文件
+检查配置文件: 数据库配置 或 其他可调整设置
 ```shell
-    vi api_mock/logToFile/config/local.yaml
+    vi config/local.yaml
+```
+
+增加可执行程序 start 权限
+```shell
+    chmod 777 start
 ```
 
 启动
-
 ```shell
-    cd ./logToFile
-    .\start.exe
+    .\start
+```
+
+## 拷贝文件
+```shell
+    scp root@172.16.10.138:/root/api_mock/public/collection/postman_collection_xxxxx.json <主机目录>
 ```
