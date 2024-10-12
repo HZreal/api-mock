@@ -140,6 +140,28 @@ func unescapeLog(input string) (string, error) {
 	return result, nil
 }
 
+func unescapeJSONString(s string) (string, error) {
+	// Handle \xXX escapes
+	re := regexp.MustCompile(`\\x([0-9A-Fa-f]{2})`)
+	s = re.ReplaceAllStringFunc(s, func(match string) string {
+		code, _ := strconv.ParseUint(match[2:], 16, 8)
+		return string(rune(code))
+	})
+
+	// Handle standard JSON escapes
+	s = strings.NewReplacer(
+		`\"`, `"`,
+		`\\`, `\`,
+		`\n`, "\n",
+		`\r`, "\r",
+		`\t`, "\t",
+		`\b`, "\b",
+		`\f`, "\f",
+	).Replace(s)
+
+	return s, nil
+}
+
 // ReadAndParseLogFile
 func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 	//

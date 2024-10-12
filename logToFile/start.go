@@ -645,7 +645,7 @@ func nginxLogToDb() {
 }
 
 func start2() {
-	// nginxLogToDb()
+	nginxLogToDb()
 
 	//
 	dbToJsonFile()

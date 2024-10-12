@@ -12,11 +12,16 @@ mysql:
   maxOpen: 200
 
 logToFile:
+  # 日志路径
   logSourcePath: D:/overall/project/api-mock/public/access.1010.log
 
+  # collection 存储相对目录
   collectionStoreDir: public/collection
+  # collection 名称前缀
   collectionNamePrefix: OKCC-Collection-
+  # collection 子目录大小/批次大小
   batchSize: 1000
+  # collection 子目录名称前缀
   collectionDirNamePrefix: dir_
 
 
