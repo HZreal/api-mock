@@ -11,7 +11,7 @@
     linux:
         set GOOS=linux
         set GOARCH=amd64
-        go build -o .\logToFile\start.exe .\logToFile\start.go
+        go build -o .\logToFile\start .\logToFile\start.go
 
 ```
 
