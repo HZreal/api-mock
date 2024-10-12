@@ -10,6 +10,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"gin-init/config"
 	"gin-init/logToFile/relat"
 	"gin-init/model/entity"
 	"gin-init/service"
@@ -17,6 +18,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -64,11 +66,13 @@ type Request struct {
 type KVItem struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
+	Type  string `json:"type,omitempty"`
 }
 
 type Body struct {
 	Mode       string       `json:"mode"`
 	Urlencoded []KVItem     `json:"urlencoded,omitempty"`
+	FormData   []KVItem     `json:"formData,omitempty"`
 	Raw        string       `json:"raw,omitempty"`
 	Options    *BodyOptions `json:"options,omitempty"`
 }
@@ -484,6 +488,8 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 
 			//
 			body := Body{}
+
+			//
 			testEvent := Event{
 				Listen: "test",
 				Script: Script{
@@ -498,7 +504,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 			events = append(events, testEvent)
 
 			if line.ContentType == "application/json" {
-				// 几乎没有这种情况
+				//
 				body.Mode = "raw"
 				body.Raw = line.RequestBody
 				body.Options = &BodyOptions{
@@ -525,8 +531,15 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 					events = append(events, prerequestEvent)
 				} else if line.BodyType == 3 {
 					// a=1&b=2
-					body.Urlencoded = parseUrlencodedArgs(line.RequestBody)
+					bodyKVArr := parseUrlencodedArgs(line.RequestBody)
+					if strings.Contains(line.Args, "m=login") {
+						// todo userName 改成变量
+					}
+					body.Urlencoded = bodyKVArr
 				}
+			} else if strings.HasPrefix(line.ContentType, "multipart/form-data") {
+				// TODO
+				body.Mode = "form-data"
 			} else {
 				body.Mode = "none"
 				body.Raw = ``
@@ -569,6 +582,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 			itemDir.Item = append(itemDir.Item, requestItem)
 		}
 
+		// 下一个批次的迭代
 		lastID = apiRecords[len(apiRecords)-1].Id
 
 		//
@@ -582,11 +596,9 @@ func start2() {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	collection := exportCollection(timestamp)
 
-	storeDir := "public/"
+	collectionStoreDir := config.Conf.LogToFile.CollectionStoreDir
 	fileName := fmt.Sprintf("postman_collection_%s.json", timestamp)
-
-	//
-	file, err := os.Create(storeDir + fileName)
+	file, err := os.Create(filepath.Join(collectionStoreDir, fileName))
 	if err != nil {
 		fmt.Println("Error creating file:", err)
 		return
@@ -606,12 +618,31 @@ func start2() {
 	fmt.Println("Postman collection saved to xxx.json")
 }
 
+func nginxLogToDb() {
+	// filePath := "D:/overall/project/api-mock/public/access.1010.log"
+	// filePath := flag.String("file", "", "Path to the log file")
+	// flag.Parse()
+	//
+	// if *filePath == "" {
+	// 	fmt.Println("Please provide a log file path using the -file flag.")
+	// 	os.Exit(1)
+	// }
+	// fmt.Println("filePath  ---->  ", *filePath)
+
+	//
+	// relat.ParseAndImport(filePath)
+	relat.ParseAndImport(config.Conf.LogToFile.LogSourcePath)
+}
+
 func main() {
 	// doTest()
 
-	// fileName := "D:/overall/project/api-mock/public/access.0930.log"
+	// fileName := "D:/overall/project/api-mock/public/access.1010.log"
 	// fileName := "D:/overall/project/api-mock/public/0930/access_0930_ab.log"
 	// start(fileName, "access_0930_ab.json")
+
+	//
+	// nginxLogToDb()
 
 	start2()
 }

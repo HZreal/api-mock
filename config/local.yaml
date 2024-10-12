@@ -16,6 +16,9 @@ mysql:
   maxConn: 200
   maxOpen: 200
 
+logToFile:
+  logSourcePath: D:/overall/project/api-mock/public/access.1010.log
+
 redis:
   host: 127.0.0.1
   port: 56378

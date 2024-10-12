@@ -13,6 +13,7 @@ type Config struct {
 	Redis      *RedisConfig      `yaml:"redis"`
 	RabbitMQ   *RabbitMQConfig   `yaml:"rabbitmq"`
 	GRPC       *GRPCConfig       `yaml:"grpc"`
+	LogToFile  *LogToFileConfig  `yaml:"logToFile"`
 }
 
 var Conf Config
