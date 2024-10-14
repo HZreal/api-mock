@@ -1,15 +1,13 @@
-FROM golang:1.20
+FROM golang:1.22-alpine AS builder
 
 WORKDIR /app
 
 COPY go.mod go.sum ./
 
-RUN go mod tidy
+ENV GOPROXY https://goproxy.cn,direct
+RUN go mod download
 
 COPY . .
 
-RUN go build -o main .
-
-EXPOSE 40020
-
-CMD ["./main"]
+ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
+RUN  go build -o start ./logToFile/start.go

@@ -5,17 +5,23 @@
 ```
     cd <work dir> /path/to/api-mock
     
-    win
+    win 下：
         go build -o .\logToFile\start.exe .\logToFile\start.go
     
-    linux:
+    linux 下:
         cmd
             set GOOS=linux
             set GOARCH=amd64
             go build -o .\logToFile\start .\logToFile\start.go
         powershell
+            (直接编译)
             $env:GOOS="linux"
             $env:GOARCH="amd64"
+            
+            (通过 Dockerfile)
+            docker build -t api_mock:1.0 .
+            $containerId = docker create api_mock:1.0
+            docker cp $containerId:/app/start .\logToFile\start
 
 ```
 
