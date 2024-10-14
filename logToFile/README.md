@@ -37,6 +37,8 @@
 检查配置文件: 数据库配置 或 其他可调整设置
 ```shell
     vi config/local.yaml
+    
+    数据库配置：dipcc dipcc@2024
 ```
 
 增加可执行程序 start 权限

@@ -301,23 +301,6 @@ func doTest() {
 	fmt.Println("Postman collection saved to postman_collection_test.json")
 }
 
-func parseUrlencodedArgs(args string) []KVItem {
-	values, err := url.ParseQuery(args)
-	if err != nil {
-		return []KVItem{}
-	}
-
-	var queries []KVItem
-	for key, vals := range values {
-		//
-		for _, val := range vals {
-			queries = append(queries, KVItem{Key: key, Value: val})
-		}
-	}
-
-	return queries
-}
-
 func start1(fileName string, collectionName string) {
 	// 创建 Postman Collection
 	collection := PostmanCollection{
@@ -449,6 +432,24 @@ func start1(fileName string, collectionName string) {
 	fmt.Println("Postman collection saved to postman_collection.json")
 }
 
+func parseUrlencodedArgs(args string) []KVItem {
+	values, err := url.ParseQuery(args)
+	if err != nil {
+		return []KVItem{}
+	}
+
+	var queries []KVItem
+	for key, vals := range values {
+		//
+		for _, val := range vals {
+			queries = append(queries, KVItem{Key: key, Value: val})
+		}
+	}
+
+	return queries
+}
+
+// 构建 Collection
 func exportCollection(timestamp string) *PostmanCollection2 {
 	// 创建 Collection
 	collection := &PostmanCollection2{
@@ -591,6 +592,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 	return collection
 }
 
+// 提取数据库接口
 func dbToJsonFile() {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	collection := exportCollection(timestamp)
@@ -628,6 +630,7 @@ func dbToJsonFile() {
 	fmt.Printf("Postman collection saved to %s", storePath)
 }
 
+// 日志导入到库
 func nginxLogToDb() {
 	// filePath := "D:/overall/project/api-mock/public/access.1010.log"
 	// filePath := flag.String("file", "", "Path to the log file")
@@ -645,6 +648,7 @@ func nginxLogToDb() {
 }
 
 func start2() {
+	//
 	nginxLogToDb()
 
 	//
