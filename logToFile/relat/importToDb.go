@@ -13,6 +13,7 @@ import (
 	"gin-init/database"
 	"gin-init/model/entity"
 	"gin-init/service"
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 	"log"
 )
@@ -64,7 +65,15 @@ func importToDb(logEntries []*service.Record) {
 			existingApi.Args = line.Args
 			existingApi.BodyType = line.BodyType
 			existingApi.RequestBody = line.RequestBody
-			existingApi.Params = line.RequestBodyParams
+
+			for _, paramItem := range line.RequestBodyParams {
+				_, existed := lo.Find(existingApi.Params, func(item *entity.ParamStruct) bool {
+					return item.Name == paramItem.Name
+				})
+				if !existed {
+					existingApi.Params = append(existingApi.Params, paramItem)
+				}
+			}
 
 			if result := DB.Save(&existingApi); result.Error != nil {
 				log.Printf("Failed to update api, error: %v", result.Error)
