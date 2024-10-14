@@ -203,7 +203,8 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 			continue
 		}
 
-		// TODO 过滤掉静态资源请求, 后续可配置名单
+		// TODO 过滤掉静态资源等请求
+		// 后续改成可配置名单
 		if strings.HasSuffix(entry.ReqUriArgs, ".js") ||
 			strings.HasSuffix(entry.Uri, ".png") ||
 			strings.HasSuffix(entry.Uri, ".txt") ||
@@ -218,6 +219,10 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 		if !strings.HasSuffix(entry.Uri, ".php") {
 			continue
 		}
+		if strings.Contains(entry.SentContentType, "text/html") {
+			continue
+		}
+		// TODO 过滤掉静态资源等请求, 后续改成可配置名单
 
 		// 处理空值
 		if entry.ContentType == "-" {
