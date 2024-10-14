@@ -244,7 +244,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 			sort.Strings(mfc)
 			queryKeys = strings.Join(mfc, "|")
 		}
-		Name := entry.Method + "-" + entry.Uri + "+" + queryKeys
+		Name := entry.Method + "-" + entry.Uri + "-" + queryKeys
 
 		// 处理 RequestBody
 		params, bodyType := parseBody(entry.RequestBody, entry.ContentType)
