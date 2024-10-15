@@ -28,6 +28,7 @@ import (
 
 const (
 	CollectionSchema string = "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	loginCondition   string = "m=login"
 
 	Mode_Urlencoded string = "urlencoded"
 	Mode_Raw        string = "raw"
@@ -345,7 +346,7 @@ func start1(fileName string, collectionName string) {
 			},
 		}
 		var events []Event
-		if strings.Contains(line.Args, "m=login") {
+		if strings.Contains(line.Args, loginCondition) {
 			testEvent.Script.Exec = relat.LoginExecScript
 		}
 		events = append(events, testEvent)
@@ -509,7 +510,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 				},
 			}
 			var events []Event
-			if strings.Contains(line.Args, "m=login") {
+			if strings.Contains(line.Args, loginCondition) {
 				testEvent.Script.Exec = relat.LoginExecScript
 			}
 			events = append(events, testEvent)
@@ -543,7 +544,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 				} else if line.BodyType == service.BodyTypeUrlencodedBodyFormUrlEncoded {
 					// a=1&b=2
 					bodyKVArr := parseUrlencodedArgs(line.RequestBody)
-					if strings.Contains(line.Args, "m=login") {
+					if strings.Contains(line.Args, loginCondition) {
 						// todo userName 改成变量
 					}
 					body.Urlencoded = bodyKVArr
@@ -681,7 +682,7 @@ func nginxLogToDb() {
 
 func start2() {
 	//
-	// nginxLogToDb()
+	nginxLogToDb()
 
 	//
 	dbToJsonFile()
