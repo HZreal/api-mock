@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"gin-init/config"
+	"gin-init/constant"
 	"gin-init/logToFile/relat"
 	"gin-init/model/entity"
 	"gin-init/service"
@@ -23,6 +24,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+)
+
+const (
+	CollectionSchema string = "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+
+	Mode_Urlencoded string = "urlencoded"
+	Mode_Raw        string = "raw"
+	Mode_Form_Data  string = "formdata"
+	Mode_None       string = "none"
 )
 
 // PostmanCollection 不包含目录的，简单枚举
@@ -64,14 +74,15 @@ type Request struct {
 
 type KVItem struct {
 	Key   string `json:"key"`
-	Value string `json:"value"`
+	Value string `json:"value,omitempty"`
 	Type  string `json:"type,omitempty"`
+	Src   string `json:"src,omitempty"`
 }
 
 type Body struct {
 	Mode       string       `json:"mode"`
 	Urlencoded []KVItem     `json:"urlencoded,omitempty"`
-	FormData   []KVItem     `json:"formData,omitempty"`
+	FormData   []KVItem     `json:"formdata,omitempty"`
 	Raw        string       `json:"raw,omitempty"`
 	Options    *BodyOptions `json:"options,omitempty"`
 }
@@ -339,7 +350,7 @@ func start1(fileName string, collectionName string) {
 		}
 		events = append(events, testEvent)
 
-		if line.ContentType == "application/json" {
+		if line.ContentType == constant.APPLICATION_JSON {
 			// 几乎没有这种情况
 			body.Mode = "raw"
 			body.Raw = line.RequestBody
@@ -348,11 +359,11 @@ func start1(fileName string, collectionName string) {
 					Language: "json",
 				},
 			}
-		} else if line.ContentType == "application/x-www-form-urlencoded" {
+		} else if line.ContentType == constant.APPLICATION_FORM_URLENCODED {
 			// 主要是这种情况
 			body.Mode = "urlencoded"
 
-			if line.BodyType == 2 {
+			if line.BodyType == service.BodyTypeUrlencodedBodyPString {
 				// p=
 				body.Urlencoded = []KVItem{
 					{Key: "p", Value: "{\"pagination\":{\"current\":1,\"pageSize\":10},\"sorter\":{},\"filter\":{}}"},
@@ -365,7 +376,7 @@ func start1(fileName string, collectionName string) {
 					},
 				}
 				events = append(events, prerequestEvent)
-			} else if line.BodyType == 3 {
+			} else if line.BodyType == service.BodyTypeUrlencodedBodyFormUrlEncoded {
 				// a=1&b=2
 				body.Urlencoded = parseUrlencodedArgs(line.RequestBody)
 			}
@@ -456,7 +467,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 		Info: Info{
 			PostmanID: uuid.New().String(),
 			Name:      config.Conf.LogToFile.CollectionNamePrefix + timestamp,
-			Schema:    "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+			Schema:    CollectionSchema,
 		},
 	}
 
@@ -503,20 +514,20 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 			}
 			events = append(events, testEvent)
 
-			if line.ContentType == "application/json" {
+			if line.ContentType == constant.APPLICATION_JSON {
 				//
-				body.Mode = "raw"
+				body.Mode = Mode_Raw
 				body.Raw = line.RequestBody
 				body.Options = &BodyOptions{
 					Raw: RawLanguage{
 						Language: "json",
 					},
 				}
-			} else if line.ContentType == "application/x-www-form-urlencoded" {
+			} else if line.ContentType == constant.APPLICATION_FORM_URLENCODED {
 				// 主要是这种情况
-				body.Mode = "urlencoded"
+				body.Mode = Mode_Urlencoded
 
-				if line.BodyType == 2 {
+				if line.BodyType == service.BodyTypeUrlencodedBodyPString {
 					// p=
 					body.Urlencoded = []KVItem{
 						{Key: "p", Value: "{\"pagination\":{\"current\":1,\"pageSize\":10},\"sorter\":{},\"filter\":{}}"},
@@ -529,7 +540,7 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 						},
 					}
 					events = append(events, prerequestEvent)
-				} else if line.BodyType == 3 {
+				} else if line.BodyType == service.BodyTypeUrlencodedBodyFormUrlEncoded {
 					// a=1&b=2
 					bodyKVArr := parseUrlencodedArgs(line.RequestBody)
 					if strings.Contains(line.Args, "m=login") {
@@ -537,11 +548,32 @@ func exportCollection(timestamp string) *PostmanCollection2 {
 					}
 					body.Urlencoded = bodyKVArr
 				}
-			} else if strings.HasPrefix(line.ContentType, "multipart/form-data") {
+			} else if strings.HasPrefix(line.ContentType, constant.MULTIPART_FORM_DATA) {
 				// TODO
-				body.Mode = "form-data"
+				body.Mode = Mode_Form_Data
+				body.FormData = []KVItem{}
+				for _, item := range line.Params {
+					example := (item.Example).(string)
+					var examplePara struct {
+						ContentType string `json:"contentType"`
+						Filename    string `json:"filename"`
+						Content     string `json:"content"`
+					}
+					ii := KVItem{Key: item.Name}
+					err := json.Unmarshal([]byte(example), &examplePara)
+					if err != nil {
+						ii.Type = "text"
+						ii.Value = example
+
+					} else {
+						ii.Type = "file"
+						ii.Src = ""
+					}
+					body.FormData = append(body.FormData, ii)
+
+				}
 			} else {
-				body.Mode = "none"
+				body.Mode = Mode_None
 				body.Raw = ``
 			}
 
@@ -597,10 +629,10 @@ func dbToJsonFile() {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	collection := exportCollection(timestamp)
 
-	//
+	// 检查目录
 	CollectionStoreDir := config.Conf.LogToFile.CollectionStoreDir
 	if !utils.IsExist(CollectionStoreDir) {
-		err := os.MkdirAll(CollectionStoreDir, os.ModePerm) // 递归创建目录
+		err := os.MkdirAll(CollectionStoreDir, os.ModePerm)
 		if err != nil {
 			fmt.Println("Error creating directory:", err)
 			return
@@ -649,7 +681,7 @@ func nginxLogToDb() {
 
 func start2() {
 	//
-	nginxLogToDb()
+	// nginxLogToDb()
 
 	//
 	dbToJsonFile()

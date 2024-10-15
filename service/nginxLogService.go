@@ -44,6 +44,7 @@ type Record struct {
 	Uri               string
 	ContentType       string
 	Args              string
+	ExtraArgs         []*entity.ParamStruct
 	BodyType          uint
 	RequestBody       string
 	RequestBodyParams []*entity.ParamStruct
@@ -237,6 +238,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 
 		// 提取 args
 		queryKeys := entry.Args
+		var extraArgsMap = make(map[string]interface{})
 		queryMaps, err := url.ParseQuery(entry.Args)
 		if err == nil {
 			mfc := make([]string, 0, len(queryMaps))
@@ -244,11 +246,23 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 				if k == "m" || k == "f" || k == "c" {
 					sort.Strings(v)
 					mfc = append(mfc, k+"="+strings.Join(v, ","))
+				} else {
+					if len(v) == 0 {
+						extraArgsMap[k] = ""
+					} else if len(v) == 1 {
+						extraArgsMap[k] = v[0]
+					} else {
+						extraArgsMap[k] = v
+					}
 				}
 			}
 			sort.Strings(mfc)
 			queryKeys = strings.Join(mfc, "|")
 		}
+		// 处理除 m,f,c 外的 query 参数
+		extraArgs := bodyParamsToParamStruct(extraArgsMap)
+
+		// 接口名称或标识
 		Name := entry.Method + "-" + entry.Uri + "-" + queryKeys
 
 		// 处理 RequestBody
@@ -262,6 +276,7 @@ func ReadAndParseLogFile(filePath string) ([]*Record, error) {
 			Uri:               entry.Uri,
 			ContentType:       entry.ContentType,
 			Args:              entry.Args,
+			ExtraArgs:         extraArgs,
 			RequestBody:       entry.RequestBody,
 			BodyType:          bodyType,
 			RequestBodyParams: params,
@@ -311,7 +326,7 @@ func parseBody(lineBody string, contentType string) (params []*entity.ParamStruc
 
 	// body 是否匹配的标记
 	var matchFlag = false
-	for _, handlerItem := range Handlers {
+	for _, handlerItem := range GetHandlers() {
 		if handlerItem.Condition(lineBody, contentType) {
 			var err error
 			body, err = handlerItem.BodyHandle(lineBody, contentType)
@@ -328,19 +343,19 @@ func parseBody(lineBody string, contentType string) (params []*entity.ParamStruc
 		log.Printf("Not match Flag Handlers ---->  %s", lineBody)
 	}
 
-	// TODO 扁平化操作
+	// 扁平化操作
 	params = bodyParamsToParamStruct(body)
 
 	return
 }
 
-// TODO 扁平化操作
+// 扁平化操作
 func bodyParamsToParamStruct(body map[string]interface{}) (params []*entity.ParamStruct) {
 	if len(body) == 0 {
 		return
 	}
 
-	//
+	// 扁平化为一个层级的对象
 	bodyFlatten := utils.Flatten(body)
 	// 处理成参数对象
 	// for k, v := range body {
@@ -392,7 +407,12 @@ func bodyParamsToParamStruct(body map[string]interface{}) (params []*entity.Para
 		default:
 			itemType = "unknown"
 		}
-		item := &entity.ParamStruct{Name: k, Type: itemType, Mock: mock}
+		item := &entity.ParamStruct{
+			Name:    k,
+			Type:    itemType,
+			Mock:    mock,
+			Example: v,
+		}
 		params = append(params, item)
 	}
 

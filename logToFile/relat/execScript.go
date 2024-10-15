@@ -30,6 +30,10 @@ var (
 		"} else {\r",
 		"    console.warn('PHPSESSID not found in response cookies.');\r",
 		"}\r",
+		"\r",
+		"pm.environment.set('rememberMe', true);\r",
+		"pm.environment.set('customerName', 'dipcc');\r",
+		"pm.environment.set('userName', 'admin');\r",
 	}
 
 	// 接口后置脚本 - 响应脚本

@@ -11,12 +11,24 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"gin-init/constant"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net/url"
 	"regexp"
 	"strings"
+)
+
+const (
+	Nothing uint = iota
+	BodyTypeUrlencodedBodyEmpty
+	BodyTypeUrlencodedBodyPString
+	BodyTypeUrlencodedBodyFormUrlEncoded
+	BodyTypeUrlencodedBodyJson
+	BodyTypeFormDataBody
+	BodyTypeEmptyContentType
+	BodyTypeFormDataEmptyBody
 )
 
 type HandleWayInterface interface {
@@ -39,7 +51,7 @@ type UrlencodedBodyEmpty struct {
 }
 
 func (p *UrlencodedBodyEmpty) Condition(bodyString string, contentType string) bool {
-	return contentType == "application/x-www-form-urlencoded" && bodyString == ""
+	return contentType == constant.APPLICATION_FORM_URLENCODED && bodyString == ""
 }
 
 func (p *UrlencodedBodyEmpty) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
@@ -52,7 +64,7 @@ type UrlencodedBodyPString struct {
 }
 
 func (p *UrlencodedBodyPString) Condition(bodyString string, contentType string) bool {
-	return contentType == "application/x-www-form-urlencoded" && regexp.MustCompile(`^p=`).MatchString(bodyString)
+	return contentType == constant.APPLICATION_FORM_URLENCODED && regexp.MustCompile(`^p=`).MatchString(bodyString)
 }
 
 func (p *UrlencodedBodyPString) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
@@ -95,7 +107,7 @@ type UrlencodedBodyFormUrlEncoded struct {
 }
 
 func (p *UrlencodedBodyFormUrlEncoded) Condition(bodyString string, contentType string) bool {
-	return contentType == "application/x-www-form-urlencoded" && regexp.MustCompile(`^([a-zA-Z0-9_%+-]+=[^&]*)+(&[a-zA-Z0-9_%+-]+=[^&]*)*$`).MatchString(bodyString)
+	return contentType == constant.APPLICATION_FORM_URLENCODED && regexp.MustCompile(`^([a-zA-Z0-9_%+-]+=[^&]*)+(&[a-zA-Z0-9_%+-]+=[^&]*)*$`).MatchString(bodyString)
 }
 
 func (p *UrlencodedBodyFormUrlEncoded) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
@@ -120,7 +132,7 @@ type UrlencodedBodyJson struct {
 }
 
 func (p *UrlencodedBodyJson) Condition(bodyString string, contentType string) bool {
-	return contentType == "application/x-www-form-urlencoded" && json.Valid([]byte(bodyString))
+	return contentType == constant.APPLICATION_FORM_URLENCODED && json.Valid([]byte(bodyString))
 }
 
 func (p *UrlencodedBodyJson) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
@@ -135,7 +147,7 @@ type FormDataEmptyBody struct {
 }
 
 func (p *FormDataEmptyBody) Condition(bodyString string, contentType string) bool {
-	return strings.Contains(contentType, "multipart/form-data") && bodyString == ""
+	return strings.Contains(contentType, constant.MULTIPART_FORM_DATA) && bodyString == ""
 }
 
 func (p *FormDataEmptyBody) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
@@ -148,7 +160,7 @@ type FormDataBody struct {
 }
 
 func (p *FormDataBody) Condition(bodyString string, contentType string) bool {
-	return strings.Contains(contentType, "multipart/form-data") && bodyString != ""
+	return strings.Contains(contentType, constant.MULTIPART_FORM_DATA) && bodyString != ""
 }
 
 func (p *FormDataBody) BodyHandle(bodyString string, contentType string) (map[string]interface{}, error) {
@@ -185,10 +197,12 @@ func (p *FormDataBody) BodyHandle(bodyString string, contentType string) (map[st
 
 		// 如果有文件名，则这是一个文件上传字段
 		if part.FileName() != "" {
-			// TODO 文件字段的处理
-			// part.Header.Get("Content-Type")
-			// part.FileName()
-			content = "this is binary data, xxxxxxxxxxxxxxxxxxxx"
+			contentArr, _ := json.Marshal(map[string]string{
+				"contentType": part.Header.Get("Content-Type"),
+				"filename":    part.FileName(),
+				"content":     "file content",
+			})
+			content = string(contentArr)
 		}
 
 		// 将字段信息添加到结果map
@@ -212,11 +226,15 @@ func (p *EmptyContentTypeBody) BodyHandle(bodyString string, contentType string)
 }
 
 var Handlers = []HandleWayInterface{
-	&EmptyContentTypeBody{BaseBody: &BaseBody{BodyType: 6}},
-	&UrlencodedBodyEmpty{BaseBody: &BaseBody{BodyType: 1}},
-	&UrlencodedBodyPString{BaseBody: &BaseBody{BodyType: 2}},
-	&UrlencodedBodyFormUrlEncoded{BaseBody: &BaseBody{BodyType: 3}},
-	&UrlencodedBodyJson{BaseBody: &BaseBody{BodyType: 4}},
-	&FormDataEmptyBody{BaseBody: &BaseBody{BodyType: 7}},
-	&FormDataBody{BaseBody: &BaseBody{BodyType: 5}},
+	&EmptyContentTypeBody{BaseBody: &BaseBody{BodyType: BodyTypeEmptyContentType}},
+	&UrlencodedBodyEmpty{BaseBody: &BaseBody{BodyType: BodyTypeUrlencodedBodyEmpty}},
+	&UrlencodedBodyPString{BaseBody: &BaseBody{BodyType: BodyTypeUrlencodedBodyPString}},
+	&UrlencodedBodyFormUrlEncoded{BaseBody: &BaseBody{BodyType: BodyTypeUrlencodedBodyFormUrlEncoded}},
+	&UrlencodedBodyJson{BaseBody: &BaseBody{BodyType: BodyTypeUrlencodedBodyJson}},
+	&FormDataEmptyBody{BaseBody: &BaseBody{BodyType: BodyTypeFormDataEmptyBody}},
+	&FormDataBody{BaseBody: &BaseBody{BodyType: BodyTypeFormDataBody}},
+}
+
+func GetHandlers() []HandleWayInterface {
+	return Handlers
 }

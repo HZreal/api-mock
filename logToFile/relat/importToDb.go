@@ -13,7 +13,7 @@ import (
 	"gin-init/database"
 	"gin-init/model/entity"
 	"gin-init/service"
-	"github.com/samber/lo"
+	"gin-init/utils"
 	"gorm.io/gorm"
 	"log"
 )
@@ -43,9 +43,10 @@ func importToDb(logEntries []*service.Record) {
 					ContentType:         line.ContentType,
 					ResponseContentType: line.SentContentType,
 					Args:                line.Args,
-					BodyType:            line.BodyType,
-					RequestBody:         line.RequestBody,
-					Params:              line.RequestBodyParams,
+					// ExtraArgs:           line.ExtraArgs,
+					BodyType:    line.BodyType,
+					RequestBody: line.RequestBody,
+					Params:      line.RequestBodyParams,
 				}
 				if result := DB.Create(&r); result.Error != nil {
 					log.Printf("Failed to create api, error: %v", result.Error)
@@ -66,14 +67,20 @@ func importToDb(logEntries []*service.Record) {
 			existingApi.BodyType = line.BodyType
 			existingApi.RequestBody = line.RequestBody
 
-			for _, paramItem := range line.RequestBodyParams {
-				_, existed := lo.Find(existingApi.Params, func(item *entity.ParamStruct) bool {
-					return item.Name == paramItem.Name
-				})
-				if !existed {
-					existingApi.Params = append(existingApi.Params, paramItem)
-				}
-			}
+			// for _, paramItem := range line.RequestBodyParams {
+			// 	_, existed := lo.Find(existingApi.Params, func(item *entity.ParamStruct) bool {
+			// 		return item.Name == paramItem.Name
+			// 	})
+			// 	if !existed {
+			// 		existingApi.Params = append(existingApi.Params, paramItem)
+			// 	}
+			// }
+			existingApi.ExtraArgs = utils.MergeArrays(existingApi.ExtraArgs, line.ExtraArgs, func(t *entity.ParamStruct) string {
+				return t.Name
+			})
+			existingApi.Params = utils.MergeArrays(existingApi.Params, line.RequestBodyParams, func(t *entity.ParamStruct) string {
+				return t.Name
+			})
 
 			if result := DB.Save(&existingApi); result.Error != nil {
 				log.Printf("Failed to update api, error: %v", result.Error)
